@@ -2,6 +2,7 @@ import 'dotenv/config';
 import OpenAI from 'openai';
 import fs from 'fs';
 import path from 'path';
+import guidelines from './guidelines.js';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -32,7 +33,9 @@ INSTRUCTIONS:
 3. List specific violations found (if any)
 4. Provide a confidence score (0-100) for your assessment
 
-Respond ONLY with valid JSON in this exact format:
+RESPONSE FORMAT:
+You must respond with ONLY valid JSON. Do not include any explanatory text, apologies, or conversational responses. Your entire response must be parseable JSON with the exact structure shown below. Do not wrap the JSON in markdown code blocks.
+
 {
   "pass": true or false,
   "violations": ["violation 1", "violation 2"],
@@ -40,59 +43,90 @@ Respond ONLY with valid JSON in this exact format:
   "summary": "Brief summary of the review"
 }`;
 
-  const response = await openai.chat.completions.create({
-    model: 'gpt-4o',
-    messages: [
-      {
-        role: 'user',
-        content: [
-          {
-            type: 'text',
-            text: prompt,
-          },
-          {
-            type: 'image_url',
-            image_url: {
-              url: `data:${mediaType};base64,${base64Image}`,
+  const maxRetries = 3;
+  let lastError = null;
+  let lastResponse = null;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: prompt,
             },
-          },
-        ],
-      },
-    ],
-    max_tokens: 1000,
-  });
+            {
+              type: 'image_url',
+              image_url: {
+                url: `data:${mediaType};base64,${base64Image}`,
+              },
+            },
+          ],
+        },
+      ],
+      max_tokens: 1000,
+    });
 
-  const content = response.choices[0].message.content;
+    const content = response.choices[0].message.content;
+    lastResponse = content;
 
-  // Parse JSON from response (handle markdown code blocks if present)
-  let jsonStr = content;
-  const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if (jsonMatch) {
-    jsonStr = jsonMatch[1].trim();
+    // Parse JSON from response (handle markdown code blocks if present)
+    let jsonStr = content.trim();
+    const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (jsonMatch) {
+      jsonStr = jsonMatch[1].trim();
+    }
+
+    try {
+      return JSON.parse(jsonStr);
+    } catch (parseError) {
+      lastError = parseError;
+      if (attempt < maxRetries) {
+        console.log(`Attempt ${attempt}/${maxRetries}: Invalid JSON response, retrying...`);
+      }
+    }
   }
 
-  return JSON.parse(jsonStr);
+  // All retries exhausted
+  throw new Error(
+    `Failed to get valid JSON after ${maxRetries} attempts. ` +
+    `Last response: "${lastResponse?.substring(0, 100)}..."`
+  );
 }
 
 // CLI interface
 async function main() {
   const args = process.argv.slice(2);
+  const validAssetTypes = Object.keys(guidelines);
 
   if (args.length < 2) {
-    console.log('Usage: node review.js <image-path> <guidelines>');
-    console.log('Example: node review.js ./logo.png "Logo must be blue. No text allowed."');
+    console.log('Usage: node review.js <image-path> <asset-type>');
+    console.log('Example: node review.js ./logo.png logo');
+    console.log(`\nValid asset types: ${validAssetTypes.join(', ')}`);
     process.exit(1);
   }
 
   const imagePath = args[0];
-  const guidelines = args.slice(1).join(' ');
+  const assetType = args[1];
+
+  if (!guidelines[assetType]) {
+    console.error(`Error: Invalid asset type "${assetType}"`);
+    console.log(`Valid asset types: ${validAssetTypes.join(', ')}`);
+    process.exit(1);
+  }
+
+  const assetGuidelines = guidelines[assetType];
 
   console.log('Reviewing asset...\n');
   console.log(`Image: ${imagePath}`);
-  console.log(`Guidelines: ${guidelines}\n`);
+  console.log(`Asset Type: ${assetType}`);
+  console.log(`Guidelines: ${assetGuidelines}\n`);
 
   try {
-    const result = await reviewAsset(imagePath, guidelines);
+    const result = await reviewAsset(imagePath, assetGuidelines);
     console.log('--- Review Result ---');
     console.log(JSON.stringify(result, null, 2));
   } catch (error) {
