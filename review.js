@@ -33,7 +33,9 @@ INSTRUCTIONS:
 3. List specific violations found (if any)
 4. Provide a confidence score (0-100) for your assessment
 
-Respond ONLY with valid JSON in this exact format:
+RESPONSE FORMAT:
+You must respond with ONLY valid JSON. Do not include any explanatory text, apologies, or conversational responses. Your entire response must be parseable JSON with the exact structure shown below. Do not wrap the JSON in markdown code blocks.
+
 {
   "pass": true or false,
   "violations": ["violation 1", "violation 2"],
@@ -41,38 +43,58 @@ Respond ONLY with valid JSON in this exact format:
   "summary": "Brief summary of the review"
 }`;
 
-  const response = await openai.chat.completions.create({
-    model: 'gpt-4o',
-    messages: [
-      {
-        role: 'user',
-        content: [
-          {
-            type: 'text',
-            text: prompt,
-          },
-          {
-            type: 'image_url',
-            image_url: {
-              url: `data:${mediaType};base64,${base64Image}`,
+  const maxRetries = 3;
+  let lastError = null;
+  let lastResponse = null;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: prompt,
             },
-          },
-        ],
-      },
-    ],
-    max_tokens: 1000,
-  });
+            {
+              type: 'image_url',
+              image_url: {
+                url: `data:${mediaType};base64,${base64Image}`,
+              },
+            },
+          ],
+        },
+      ],
+      max_tokens: 1000,
+    });
 
-  const content = response.choices[0].message.content;
+    const content = response.choices[0].message.content;
+    lastResponse = content;
 
-  // Parse JSON from response (handle markdown code blocks if present)
-  let jsonStr = content;
-  const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if (jsonMatch) {
-    jsonStr = jsonMatch[1].trim();
+    // Parse JSON from response (handle markdown code blocks if present)
+    let jsonStr = content.trim();
+    const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (jsonMatch) {
+      jsonStr = jsonMatch[1].trim();
+    }
+
+    try {
+      return JSON.parse(jsonStr);
+    } catch (parseError) {
+      lastError = parseError;
+      if (attempt < maxRetries) {
+        console.log(`Attempt ${attempt}/${maxRetries}: Invalid JSON response, retrying...`);
+      }
+    }
   }
 
-  return JSON.parse(jsonStr);
+  // All retries exhausted
+  throw new Error(
+    `Failed to get valid JSON after ${maxRetries} attempts. ` +
+    `Last response: "${lastResponse?.substring(0, 100)}..."`
+  );
 }
 
 // CLI interface
