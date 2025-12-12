@@ -1,0 +1,138 @@
+import 'dotenv/config';
+import OpenAI from 'openai';
+import fs from 'fs';
+import path from 'path';
+import guidelines from './guidelines.js';
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+async function reviewAsset(imagePath, guidelines) {
+  // Validate image exists
+  if (!fs.existsSync(imagePath)) {
+    throw new Error(`Image file not found: ${imagePath}`);
+  }
+
+  // Read and encode image as base64
+  const imageBuffer = fs.readFileSync(imagePath);
+  const base64Image = imageBuffer.toString('base64');
+
+  // Determine media type from extension
+  const ext = path.extname(imagePath).toLowerCase();
+  const mediaType = ext === '.png' ? 'image/png' : 'image/jpeg';
+
+  const prompt = `You are a brand compliance reviewer. Analyze this image against the following brand guidelines and provide a structured assessment.
+
+BRAND GUIDELINES:
+${guidelines}
+
+INSTRUCTIONS:
+1. Carefully examine the image for any violations of the brand guidelines
+2. Determine if the asset passes or fails compliance
+3. List specific violations found (if any)
+4. Provide a confidence score (0-100) for your assessment
+
+RESPONSE FORMAT:
+You must respond with ONLY valid JSON. Do not include any explanatory text, apologies, or conversational responses. Your entire response must be parseable JSON with the exact structure shown below. Do not wrap the JSON in markdown code blocks.
+
+{
+  "pass": true or false,
+  "violations": ["violation 1", "violation 2"],
+  "confidence": 0-100,
+  "summary": "Brief summary of the review"
+}`;
+
+  const maxRetries = 3;
+  let lastError = null;
+  let lastResponse = null;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: prompt,
+            },
+            {
+              type: 'image_url',
+              image_url: {
+                url: `data:${mediaType};base64,${base64Image}`,
+              },
+            },
+          ],
+        },
+      ],
+      max_tokens: 1000,
+    });
+
+    const content = response.choices[0].message.content;
+    lastResponse = content;
+
+    // Parse JSON from response (handle markdown code blocks if present)
+    let jsonStr = content.trim();
+    const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (jsonMatch) {
+      jsonStr = jsonMatch[1].trim();
+    }
+
+    try {
+      return JSON.parse(jsonStr);
+    } catch (parseError) {
+      lastError = parseError;
+      if (attempt < maxRetries) {
+        console.log(`Attempt ${attempt}/${maxRetries}: Invalid JSON response, retrying...`);
+      }
+    }
+  }
+
+  // All retries exhausted
+  throw new Error(
+    `Failed to get valid JSON after ${maxRetries} attempts. ` +
+    `Last response: "${lastResponse?.substring(0, 100)}..."`
+  );
+}
+
+// CLI interface
+async function main() {
+  const args = process.argv.slice(2);
+  const validAssetTypes = Object.keys(guidelines);
+
+  if (args.length < 2) {
+    console.log('Usage: node review.js <image-path> <asset-type>');
+    console.log('Example: node review.js ./logo.png logo');
+    console.log(`\nValid asset types: ${validAssetTypes.join(', ')}`);
+    process.exit(1);
+  }
+
+  const imagePath = args[0];
+  const assetType = args[1];
+
+  if (!guidelines[assetType]) {
+    console.error(`Error: Invalid asset type "${assetType}"`);
+    console.log(`Valid asset types: ${validAssetTypes.join(', ')}`);
+    process.exit(1);
+  }
+
+  const assetGuidelines = guidelines[assetType];
+
+  console.log('Reviewing asset...\n');
+  console.log(`Image: ${imagePath}`);
+  console.log(`Asset Type: ${assetType}`);
+  console.log(`Guidelines: ${assetGuidelines}\n`);
+
+  try {
+    const result = await reviewAsset(imagePath, assetGuidelines);
+    console.log('--- Review Result ---');
+    console.log(JSON.stringify(result, null, 2));
+  } catch (error) {
+    console.error('Error:', error.message);
+    process.exit(1);
+  }
+}
+
+main();
