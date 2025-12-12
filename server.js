@@ -189,11 +189,15 @@ app.get('/api/health', (req, res) => {
 });
 
 // Serve static files from React app in production
-app.use(express.static(path.join(__dirname, 'client/build')));
+const buildPath = path.join(__dirname, 'client/build');
+if (fs.existsSync(buildPath)) {
+  app.use(express.static(buildPath));
 
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'client/build', 'index.html'));
-});
+  // Handle client-side routing - serve index.html for all non-API routes
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(buildPath, 'index.html'));
+  });
+}
 
 // Create uploads directory if it doesn't exist
 if (!fs.existsSync('uploads')) {
