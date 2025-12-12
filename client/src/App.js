@@ -1,5 +1,8 @@
 import React, { useState, useCallback } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
+import Login from './components/Admin/Login';
+import Dashboard from './components/Admin/Dashboard';
 
 const ASSET_TYPES = [
   { id: 'logo', name: 'Logo', description: 'Brand logos and marks' },
@@ -8,7 +11,13 @@ const ASSET_TYPES = [
   { id: 'print', name: 'Print', description: 'Print materials and collateral' },
 ];
 
-function App() {
+// Protected route component for admin dashboard
+function AdminRoute() {
+  const isAuthenticated = localStorage.getItem('adminAuthenticated') === 'true';
+  return isAuthenticated ? <Dashboard /> : <Navigate to="/admin/login" replace />;
+}
+
+function SubmitterInterface() {
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [assetType, setAssetType] = useState('logo');
@@ -228,6 +237,18 @@ function App() {
         <p>Powered by OpenAI GPT-4o Vision</p>
       </footer>
     </div>
+  );
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<SubmitterInterface />} />
+        <Route path="/admin/login" element={<Login />} />
+        <Route path="/admin" element={<AdminRoute />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 
