@@ -80,7 +80,17 @@ function SubmitterInterface() {
         throw new Error(data.error || 'Failed to review asset');
       }
 
-      setResult(data.result);
+      // Check if ghost mode is active
+      if (data.ghostMode) {
+        // Ghost mode: Show generic success message
+        setResult({
+          ghostMode: true,
+          message: data.message
+        });
+      } else {
+        // Normal mode: Show AI results
+        setResult(data.result);
+      }
     } catch (err) {
       setError(err.message || 'An error occurred during review');
     } finally {
@@ -183,39 +193,58 @@ function SubmitterInterface() {
         )}
 
         {result && (
-          <div className={`results ${result.pass ? 'pass' : 'fail'}`}>
-            <div className="result-header">
-              <div className={`status-badge ${result.pass ? 'pass' : 'fail'}`}>
-                {result.pass ? 'PASS' : 'FAIL'}
+          result.ghostMode ? (
+            // Ghost Mode: Generic success message
+            <div className="results pass">
+              <div className="result-header">
+                <div className="status-badge pass">
+                  SUBMITTED
+                </div>
               </div>
-              <div className="confidence">
-                <span className="confidence-label">Confidence</span>
-                <span className="confidence-value">{result.confidence}%</span>
+              <div className="result-summary">
+                <h3>Submission Received</h3>
+                <p>{result.message}</p>
+                <p style={{ marginTop: '1rem', fontSize: '0.9rem', color: '#666' }}>
+                  Our team will review your submission and get back to you soon.
+                </p>
               </div>
             </div>
+          ) : (
+            // Normal Mode: Show AI results
+            <div className={`results ${result.pass ? 'pass' : 'fail'}`}>
+              <div className="result-header">
+                <div className={`status-badge ${result.pass ? 'pass' : 'fail'}`}>
+                  {result.pass ? 'PASS' : 'FAIL'}
+                </div>
+                <div className="confidence">
+                  <span className="confidence-label">Confidence</span>
+                  <span className="confidence-value">{result.confidence}%</span>
+                </div>
+              </div>
 
-            <div className="result-summary">
-              <h3>Summary</h3>
-              <p>{result.summary}</p>
+              <div className="result-summary">
+                <h3>Summary</h3>
+                <p>{result.summary}</p>
+              </div>
+
+              {result.violations && result.violations.length > 0 && (
+                <div className="violations">
+                  <h3>Violations Found ({result.violations.length})</h3>
+                  <ul>
+                    {result.violations.map((violation, index) => (
+                      <li key={index}>{violation}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {result.pass && (!result.violations || result.violations.length === 0) && (
+                <div className="no-violations">
+                  <p>No violations detected. Asset meets brand guidelines.</p>
+                </div>
+              )}
             </div>
-
-            {result.violations && result.violations.length > 0 && (
-              <div className="violations">
-                <h3>Violations Found ({result.violations.length})</h3>
-                <ul>
-                  {result.violations.map((violation, index) => (
-                    <li key={index}>{violation}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {result.pass && (!result.violations || result.violations.length === 0) && (
-              <div className="no-violations">
-                <p>No violations detected. Asset meets brand guidelines.</p>
-              </div>
-            )}
-          </div>
+          )
         )}
       </main>
 

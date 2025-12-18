@@ -229,17 +229,37 @@ Respond in this exact JSON format:
     // Clean up temporary file
     fs.unlinkSync(req.file.path);
 
-    // Send response
-    console.log(`\n✨ Review complete: ${result.passed ? 'PASS' : 'FAIL'} (${result.confidence}% confidence)\n`);
-    
-res.json({
-  result: {
-    pass: result.passed,
-    confidence: result.confidence,
-    violations: result.violations,
-    summary: result.summary
-  }
-});
+    // Check if ghost mode is enabled
+const { data: ghostModeData } = await supabase
+  .from('app_settings')
+  .select('setting_value')
+  .eq('setting_key', 'ghost_mode')
+  .single();
+
+const ghostModeEnabled = ghostModeData?.setting_value?.enabled || false;
+
+// Send response
+console.log(`\n✨ Review complete: ${result.passed ? 'PASS' : 'FAIL'} (${result.confidence}% confidence)`);
+console.log(`👻 Ghost Mode: ${ghostModeEnabled ? 'ACTIVE (hiding results from submitter)' : 'DISABLED'}\n`);
+
+if (ghostModeEnabled) {
+  // Ghost mode: Don't show AI results to submitter
+  res.json({
+    ghostMode: true,
+    message: 'Submission received and is under review.'
+  });
+} else {
+  // Normal mode: Show AI results
+  res.json({
+    ghostMode: false,
+    result: {
+      pass: result.passed,
+      confidence: result.confidence,
+      violations: result.violations,
+      summary: result.summary
+    }
+  });
+}
 
   } catch (error) {
     console.error('❌ Error in /api/review:', error);
