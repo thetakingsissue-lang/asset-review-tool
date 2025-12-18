@@ -235,6 +235,8 @@ Testing Supabase connection...
    - Color-coded violations
    - Success animations
 
+- ⚠️ **SECURITY TODO:** Switch storage to private before first paid client
+
 ### ⏳ Phase 3: Full Platform (FUTURE)
 - Magic link authentication
 - Submission status workflow
@@ -283,6 +285,37 @@ Testing Supabase connection...
   - Lower support burden
   - Clone template approach scales to 25-30 clients fine
 - **Note:** May revisit if scaling beyond 50 clients
+
+### ⚠️ IMPORTANT: File Storage Security
+
+**CURRENT STATE (MVP):** Storage bucket is **PUBLIC**
+- Files have obscure URLs but are technically accessible to anyone with the link
+- Acceptable for development and early testing
+- **NOT acceptable for production or paying clients**
+
+**BEFORE FIRST PAID CLIENT:**
+1. Go to Supabase → Storage → assets bucket
+2. Toggle bucket to **PRIVATE**
+3. Update `server.js` to use signed URLs instead of public URLs:
+```javascript
+// CHANGE THIS (public):
+const { data: urlData } = supabase.storage
+  .from('assets')
+  .getPublicUrl(filePath);
+
+// TO THIS (private with expiration):
+const { data: urlData, error } = await supabase.storage
+  .from('assets')
+  .createSignedUrl(filePath, 3600); // Expires in 1 hour
+```
+
+4. Test upload/download flow still works
+5. Update README to reflect private storage
+
+**WHY THIS MATTERS:**
+- Sponsors don't want competitors seeing unreleased assets
+- Franchises require confidential file storage
+- Professional security = trust = sales
 
 ---
 
