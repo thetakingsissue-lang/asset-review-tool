@@ -21,6 +21,8 @@ function AssetTypes() {
     description: '',
     guidelines: ''
   });
+  const [referenceImages, setReferenceImages] = useState([]);
+  const [uploadingImages, setUploadingImages] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
@@ -56,6 +58,8 @@ function AssetTypes() {
         description: type.description,
         guidelines: type.guidelines
       });
+      // Load existing reference images
+      setReferenceImages(type.reference_images || []);
     } else {
       // Adding new type
       setEditingType(null);
@@ -64,6 +68,7 @@ function AssetTypes() {
         description: '',
         guidelines: ''
       });
+      setReferenceImages([]);
     }
     setShowModal(true);
     setError('');
@@ -73,6 +78,7 @@ function AssetTypes() {
     setShowModal(false);
     setEditingType(null);
     setFormData({ name: '', description: '', guidelines: '' });
+    setReferenceImages([]);
     setError('');
   };
 
@@ -82,6 +88,78 @@ function AssetTypes() {
       ...prev,
       [name]: value
     }));
+  };
+
+  const handleReferenceImageUpload = async (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+
+    setUploadingImages(true);
+    setError('');
+
+    try {
+      const uploadedUrls = [];
+
+      for (const file of files) {
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+          throw new Error(`${file.name} is not an image file`);
+        }
+
+        // Generate unique filename
+        const timestamp = Date.now();
+        const randomStr = Math.random().toString(36).substring(7);
+        const fileExt = file.name.split('.').pop();
+        const fileName = `reference-images/${formData.name || 'temp'}/${timestamp}-${randomStr}.${fileExt}`;
+
+        // Upload to Supabase Storage
+        const { data, error } = await supabase.storage
+          .from('assets')
+          .upload(fileName, file);
+
+        if (error) throw error;
+
+        // Get public URL
+        const { data: urlData } = supabase.storage
+          .from('assets')
+          .getPublicUrl(fileName);
+
+        uploadedUrls.push({
+          url: urlData.publicUrl,
+          fileName: file.name,
+          storagePath: fileName
+        });
+      }
+
+      // Add to reference images array
+      setReferenceImages(prev => [...prev, ...uploadedUrls]);
+    } catch (err) {
+      console.error('Error uploading reference images:', err);
+      setError('Failed to upload images: ' + err.message);
+    } finally {
+      setUploadingImages(false);
+    }
+  };
+
+  const handleRemoveReferenceImage = async (index) => {
+    const imageToRemove = referenceImages[index];
+    
+    try {
+      // Delete from storage if it has a storagePath
+      if (imageToRemove.storagePath) {
+        const { error } = await supabase.storage
+          .from('assets')
+          .remove([imageToRemove.storagePath]);
+
+        if (error) throw error;
+      }
+
+      // Remove from state
+      setReferenceImages(prev => prev.filter((_, i) => i !== index));
+    } catch (err) {
+      console.error('Error removing reference image:', err);
+      setError('Failed to remove image: ' + err.message);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -96,16 +174,19 @@ function AssetTypes() {
     }
 
     try {
+      const dataToSave = {
+        name: formData.name.trim(),
+        description: formData.description.trim(),
+        guidelines: formData.guidelines.trim(),
+        reference_images: referenceImages,
+        updated_at: new Date().toISOString()
+      };
+
       if (editingType) {
         // Update existing
         const { error } = await supabase
           .from('asset_types')
-          .update({
-            name: formData.name.trim(),
-            description: formData.description.trim(),
-            guidelines: formData.guidelines.trim(),
-            updated_at: new Date().toISOString()
-          })
+          .update(dataToSave)
           .eq('id', editingType.id);
 
         if (error) throw error;
@@ -114,11 +195,7 @@ function AssetTypes() {
         // Create new
         const { error } = await supabase
           .from('asset_types')
-          .insert([{
-            name: formData.name.trim(),
-            description: formData.description.trim(),
-            guidelines: formData.guidelines.trim()
-          }]);
+          .insert([dataToSave]);
 
         if (error) throw error;
         setSuccessMessage('Asset type created successfully!');
@@ -142,6 +219,27 @@ function AssetTypes() {
     }
 
     try {
+      // Get the asset type to find reference images
+      const { data: assetType } = await supabase
+        .from('asset_types')
+        .select('reference_images')
+        .eq('id', id)
+        .single();
+
+      // Delete reference images from storage
+      if (assetType?.reference_images && assetType.reference_images.length > 0) {
+        const pathsToDelete = assetType.reference_images
+          .filter(img => img.storagePath)
+          .map(img => img.storagePath);
+        
+        if (pathsToDelete.length > 0) {
+          await supabase.storage
+            .from('assets')
+            .remove(pathsToDelete);
+        }
+      }
+
+      // Delete asset type from database
       const { error } = await supabase
         .from('asset_types')
         .delete()
@@ -226,6 +324,7 @@ function AssetTypes() {
               <th style={{ textAlign: 'left', padding: '0.75rem', fontWeight: '600', color: '#374151' }}>Name</th>
               <th style={{ textAlign: 'left', padding: '0.75rem', fontWeight: '600', color: '#374151' }}>Description</th>
               <th style={{ textAlign: 'left', padding: '0.75rem', fontWeight: '600', color: '#374151' }}>Guidelines</th>
+              <th style={{ textAlign: 'center', padding: '0.75rem', fontWeight: '600', color: '#374151' }}>Ref Images</th>
               <th style={{ textAlign: 'right', padding: '0.75rem', fontWeight: '600', color: '#374151' }}>Actions</th>
             </tr>
           </thead>
@@ -249,6 +348,19 @@ function AssetTypes() {
                   ) : (
                     <em style={{ color: '#d1d5db' }}>No guidelines</em>
                   )}
+                </td>
+                <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                  <span style={{
+                    display: 'inline-block',
+                    backgroundColor: type.reference_images?.length > 0 ? '#dbeafe' : '#f3f4f6',
+                    color: type.reference_images?.length > 0 ? '#1e40af' : '#6b7280',
+                    padding: '0.25rem 0.5rem',
+                    borderRadius: '9999px',
+                    fontSize: '0.875rem',
+                    fontWeight: '500'
+                  }}>
+                    {type.reference_images?.length || 0}
+                  </span>
                 </td>
                 <td style={{ padding: '0.75rem', textAlign: 'right' }}>
                   <button
@@ -303,7 +415,7 @@ function AssetTypes() {
             backgroundColor: 'white',
             padding: '2rem',
             borderRadius: '8px',
-            maxWidth: '600px',
+            maxWidth: '700px',
             width: '90%',
             maxHeight: '90vh',
             overflow: 'auto'
@@ -380,6 +492,91 @@ function AssetTypes() {
                 <p style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem' }}>
                   These guidelines will be used by the AI to check submissions
                 </p>
+              </div>
+
+              {/* Reference Images Section */}
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{ display: 'block', fontWeight: '500', marginBottom: '0.5rem' }}>
+                  Reference Images (Optional)
+                </label>
+                <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.75rem' }}>
+                  Upload example images of compliant assets. The AI will use these as visual references when checking submissions.
+                </p>
+                
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleReferenceImageUpload}
+                  disabled={uploadingImages}
+                  style={{
+                    width: '100%',
+                    padding: '0.5rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '4px',
+                    fontSize: '0.875rem',
+                    marginBottom: '1rem'
+                  }}
+                />
+
+                {uploadingImages && (
+                  <div style={{ 
+                    color: '#6b7280', 
+                    fontSize: '0.875rem', 
+                    marginBottom: '1rem' 
+                  }}>
+                    Uploading images...
+                  </div>
+                )}
+
+                {/* Reference Images Grid */}
+                {referenceImages.length > 0 && (
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
+                    gap: '0.75rem',
+                    marginTop: '1rem'
+                  }}>
+                    {referenceImages.map((img, index) => (
+                      <div key={index} style={{
+                        position: 'relative',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '4px',
+                        overflow: 'hidden',
+                        aspectRatio: '1'
+                      }}>
+                        <img
+                          src={img.url}
+                          alt={`Reference ${index + 1}`}
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover'
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveReferenceImage(index)}
+                          style={{
+                            position: 'absolute',
+                            top: '4px',
+                            right: '4px',
+                            backgroundColor: 'rgba(239, 68, 68, 0.9)',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            padding: '4px 8px',
+                            fontSize: '0.75rem',
+                            cursor: 'pointer',
+                            fontWeight: '500'
+                          }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Modal Error */}

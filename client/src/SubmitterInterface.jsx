@@ -1,21 +1,46 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
+import { createClient } from '@supabase/supabase-js';
 import './App.css';
 
-const ASSET_TYPES = [
-  { id: 'logo', name: 'Logo', description: 'Brand logos and marks' },
-  { id: 'banner', name: 'Banner', description: 'Web banners and ads' },
-  { id: 'social', name: 'Social Media', description: 'Social media posts and graphics' },
-  { id: 'print', name: 'Print', description: 'Print materials and collateral' },
-];
+const supabase = createClient(
+  process.env.REACT_APP_SUPABASE_URL,
+  process.env.REACT_APP_SUPABASE_ANON_KEY
+);
 
 function SubmitterInterface() {
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
-  const [assetType, setAssetType] = useState('logo');
+  const [assetType, setAssetType] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [dragActive, setDragActive] = useState(false);
+  const [assetTypes, setAssetTypes] = useState([]);
+
+  // Fetch asset types from database on component mount
+  useEffect(() => {
+    const fetchAssetTypes = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('asset_types')
+          .select('name, description')
+          .order('name', { ascending: true });
+        
+        if (error) throw error;
+        
+        setAssetTypes(data || []);
+        // Set first asset type as default if available
+        if (data && data.length > 0) {
+          setAssetType(data[0].name);
+        }
+      } catch (error) {
+        console.error('Error fetching asset types:', error);
+        setError('Failed to load asset types');
+      }
+    };
+
+    fetchAssetTypes();
+  }, []);
 
   const handleFileSelect = useCallback((selectedFile) => {
     if (selectedFile && selectedFile.type.startsWith('image/')) {
@@ -161,12 +186,18 @@ function SubmitterInterface() {
               value={assetType}
               onChange={(e) => setAssetType(e.target.value)}
               className="select-input"
+              disabled={assetTypes.length === 0}
             >
-              {ASSET_TYPES.map((type) => (
-                <option key={type.id} value={type.id}>
-                  {type.name} - {type.description}
-                </option>
-              ))}
+              {assetTypes.length === 0 ? (
+                <option>Loading asset types...</option>
+              ) : (
+                assetTypes.map((type) => (
+                  <option key={type.name} value={type.name}>
+                    {type.name.charAt(0).toUpperCase() + type.name.slice(1)}
+                    {type.description && ` - ${type.description}`}
+                  </option>
+                ))
+              )}
             </select>
           </div>
 

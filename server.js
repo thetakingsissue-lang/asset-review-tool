@@ -65,6 +65,30 @@ const upload = multer({
   },
 });
 
+// Helper function to download and convert reference image to base64
+async function fetchReferenceImageAsBase64(imageUrl) {
+  try {
+    const response = await fetch(imageUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image: ${response.status}`);
+    }
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const base64 = buffer.toString('base64');
+    
+    // Try to determine MIME type from URL or default to jpeg
+    let mimeType = 'image/jpeg';
+    if (imageUrl.includes('.png')) mimeType = 'image/png';
+    else if (imageUrl.includes('.gif')) mimeType = 'image/gif';
+    else if (imageUrl.includes('.webp')) mimeType = 'image/webp';
+    
+    return { base64, mimeType };
+  } catch (error) {
+    console.error('Error fetching reference image:', error);
+    return null;
+  }
+}
+
 // API Routes
 app.post('/api/review', upload.single('file'), async (req, res) => {
   try {
@@ -83,10 +107,10 @@ app.post('/api/review', upload.single('file'), async (req, res) => {
     console.log(`   File: ${req.file.originalname}`);
     console.log(`   Size: ${(req.file.size / 1024).toFixed(2)} KB`);
 
-    // Get guidelines for this asset type from Supabase
+    // Get guidelines AND reference images for this asset type from Supabase
     const { data: assetTypeData, error: assetTypeError } = await supabase
       .from('asset_types')
-      .select('guidelines')
+      .select('guidelines, reference_images')
       .eq('name', assetType)
       .single();
 
@@ -96,12 +120,92 @@ app.post('/api/review', upload.single('file'), async (req, res) => {
     }
 
     const guidelines = assetTypeData.guidelines || 'No specific guidelines provided.';
+    const referenceImages = assetTypeData.reference_images || [];
+    
     console.log(`   Guidelines loaded: ${guidelines.substring(0, 100)}...`);
+    console.log(`   Reference images found: ${referenceImages.length}`);
 
-    // Read file and convert to base64
+    // Fetch and convert reference images to base64
+    const referenceImagesBase64 = [];
+    if (referenceImages.length > 0) {
+      console.log('🖼️  Downloading reference images...');
+      for (const refImg of referenceImages) {
+        const imageData = await fetchReferenceImageAsBase64(refImg.url);
+        if (imageData) {
+          referenceImagesBase64.push(imageData);
+        }
+      }
+      console.log(`   Successfully loaded: ${referenceImagesBase64.length}/${referenceImages.length} reference images`);
+    }
+
+    // Read submission file and convert to base64
     const fileBuffer = fs.readFileSync(req.file.path);
     const base64Image = fileBuffer.toString('base64');
     const mimeType = req.file.mimetype;
+
+    // Build the messages array for OpenAI
+    const messages = [
+      {
+        role: 'system',
+        content: `You are a brand compliance checker. Review the submitted asset against these guidelines and determine if it passes or fails.
+
+Guidelines:
+${guidelines}
+
+${referenceImagesBase64.length > 0 ? `IMPORTANT: You will see ${referenceImagesBase64.length} reference image(s) that show examples of COMPLIANT assets. Use these as visual examples when checking the submission.` : ''}
+
+Respond in this exact JSON format:
+{
+  "passed": true or false,
+  "confidence": 0-100,
+  "violations": ["violation 1", "violation 2"] or [],
+  "summary": "Brief explanation"
+}`
+      }
+    ];
+
+    // Build user message content
+    const userMessageContent = [];
+
+    // Add reference images first (if any)
+    if (referenceImagesBase64.length > 0) {
+      userMessageContent.push({
+        type: 'text',
+        text: `Here ${referenceImagesBase64.length === 1 ? 'is an example' : `are ${referenceImagesBase64.length} examples`} of COMPLIANT ${assetType} assets for reference:`
+      });
+
+      referenceImagesBase64.forEach((imgData, index) => {
+        userMessageContent.push({
+          type: 'image_url',
+          image_url: {
+            url: `data:${imgData.mimeType};base64,${imgData.base64}`
+          }
+        });
+      });
+
+      userMessageContent.push({
+        type: 'text',
+        text: '---\n\nNow, please review THIS submission for compliance:'
+      });
+    } else {
+      userMessageContent.push({
+        type: 'text',
+        text: `Please review this ${assetType} asset for brand compliance.`
+      });
+    }
+
+    // Add the submission image
+    userMessageContent.push({
+      type: 'image_url',
+      image_url: {
+        url: `data:${mimeType};base64,${base64Image}`
+      }
+    });
+
+    messages.push({
+      role: 'user',
+      content: userMessageContent
+    });
 
     // Call OpenAI Vision API
     console.log('🤖 Calling OpenAI API...');
@@ -113,38 +217,7 @@ app.post('/api/review', upload.single('file'), async (req, res) => {
       },
       body: JSON.stringify({
         model: 'gpt-4o',
-        messages: [
-          {
-            role: 'system',
-            content: `You are a brand compliance checker. Review the submitted asset against these guidelines and determine if it passes or fails.
-
-Guidelines:
-${guidelines}
-
-Respond in this exact JSON format:
-{
-  "passed": true or false,
-  "confidence": 0-100,
-  "violations": ["violation 1", "violation 2"] or [],
-  "summary": "Brief explanation"
-}`
-          },
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'text',
-                text: `Please review this ${assetType} asset for brand compliance.`
-              },
-              {
-                type: 'image_url',
-                image_url: {
-                  url: `data:${mimeType};base64,${base64Image}`
-                }
-              }
-            ]
-          }
-        ],
+        messages: messages,
         max_tokens: 500
       })
     });
@@ -230,36 +303,37 @@ Respond in this exact JSON format:
     fs.unlinkSync(req.file.path);
 
     // Check if ghost mode is enabled
-const { data: ghostModeData } = await supabase
-  .from('app_settings')
-  .select('setting_value')
-  .eq('setting_key', 'ghost_mode')
-  .single();
+    const { data: ghostModeData } = await supabase
+      .from('app_settings')
+      .select('setting_value')
+      .eq('setting_key', 'ghost_mode')
+      .single();
 
-const ghostModeEnabled = ghostModeData?.setting_value?.enabled || false;
+    const ghostModeEnabled = ghostModeData?.setting_value?.enabled || false;
 
-// Send response
-console.log(`\n✨ Review complete: ${result.passed ? 'PASS' : 'FAIL'} (${result.confidence}% confidence)`);
-console.log(`👻 Ghost Mode: ${ghostModeEnabled ? 'ACTIVE (hiding results from submitter)' : 'DISABLED'}\n`);
+    // Send response
+    console.log(`\n✨ Review complete: ${result.passed ? 'PASS' : 'FAIL'} (${result.confidence}% confidence)`);
+    console.log(`👻 Ghost Mode: ${ghostModeEnabled ? 'ACTIVE (hiding results from submitter)' : 'DISABLED'}`);
+    console.log(`🖼️  Reference images used: ${referenceImagesBase64.length}\n`);
 
-if (ghostModeEnabled) {
-  // Ghost mode: Don't show AI results to submitter
-  res.json({
-    ghostMode: true,
-    message: 'Submission received and is under review.'
-  });
-} else {
-  // Normal mode: Show AI results
-  res.json({
-    ghostMode: false,
-    result: {
-      pass: result.passed,
-      confidence: result.confidence,
-      violations: result.violations,
-      summary: result.summary
+    if (ghostModeEnabled) {
+      // Ghost mode: Don't show AI results to submitter
+      res.json({
+        ghostMode: true,
+        message: 'Submission received and is under review.'
+      });
+    } else {
+      // Normal mode: Show AI results
+      res.json({
+        ghostMode: false,
+        result: {
+          pass: result.passed,
+          confidence: result.confidence,
+          violations: result.violations,
+          summary: result.summary
+        }
+      });
     }
-  });
-}
 
   } catch (error) {
     console.error('❌ Error in /api/review:', error);
@@ -289,5 +363,3 @@ if (!fs.existsSync('uploads')) {
 app.listen(PORT, () => {
   console.log(`Asset Review API running on http://localhost:${PORT}`);
 });
-
-export { supabase };
