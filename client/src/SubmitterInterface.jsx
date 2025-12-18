@@ -65,7 +65,7 @@ function SubmitterInterface() {
     setResult(null);
 
     const formData = new FormData();
-    formData.append('image', file);
+    formData.append('file', file);
     formData.append('assetType', assetType);
 
     try {
