@@ -66,8 +66,21 @@ const upload = multer({
 });
 
 // Helper function to download and convert reference image to base64
-async function fetchReferenceImageAsBase64(imageUrl) {
+async function fetchReferenceImageAsBase64(refImageObj) {
   try {
+    // Generate signed URL for the reference image
+    const { data: urlData, error: urlError } = await supabase.storage
+      .from('assets')
+      .createSignedUrl(refImageObj.storagePath, 3600); // 1 hour expiration
+    
+    if (urlError) {
+      console.error('❌ Error creating signed URL for reference image:', urlError);
+      return null;
+    }
+    
+    const imageUrl = urlData.signedUrl;
+    
+    // Fetch the image
     const response = await fetch(imageUrl);
     if (!response.ok) {
       throw new Error(`Failed to fetch image: ${response.status}`);
@@ -76,15 +89,16 @@ async function fetchReferenceImageAsBase64(imageUrl) {
     const buffer = Buffer.from(arrayBuffer);
     const base64 = buffer.toString('base64');
     
-    // Try to determine MIME type from URL or default to jpeg
+    // Determine MIME type from filename
+    const fileName = refImageObj.fileName.toLowerCase();
     let mimeType = 'image/jpeg';
-    if (imageUrl.includes('.png')) mimeType = 'image/png';
-    else if (imageUrl.includes('.gif')) mimeType = 'image/gif';
-    else if (imageUrl.includes('.webp')) mimeType = 'image/webp';
+    if (fileName.endsWith('.png')) mimeType = 'image/png';
+    else if (fileName.endsWith('.gif')) mimeType = 'image/gif';
+    else if (fileName.endsWith('.webp')) mimeType = 'image/webp';
     
     return { base64, mimeType };
   } catch (error) {
-    console.error('Error fetching reference image:', error);
+    console.error('❌ Error fetching reference image:', error);
     return null;
   }
 }
@@ -130,7 +144,7 @@ app.post('/api/review', upload.single('file'), async (req, res) => {
     if (referenceImages.length > 0) {
       console.log('🖼️  Downloading reference images...');
       for (const refImg of referenceImages) {
-        const imageData = await fetchReferenceImageAsBase64(refImg.url);
+        const imageData = await fetchReferenceImageAsBase64(refImg); // Pass whole object now
         if (imageData) {
           referenceImagesBase64.push(imageData);
         }
@@ -269,13 +283,17 @@ Respond in this exact JSON format:
       // Continue anyway - we'll save submission without file URL
     }
 
-    // Get public URL for the uploaded file
-    const { data: urlData } = supabase.storage
+    // Generate signed URL for the uploaded file (expires in 1 hour)
+    const { data: urlData, error: urlError } = await supabase.storage
       .from('assets')
-      .getPublicUrl(filePath);
+      .createSignedUrl(filePath, 3600); // 3600 seconds = 1 hour
 
-    const fileUrl = urlData?.publicUrl || '';
-    console.log('✅ File uploaded:', fileUrl);
+    if (urlError) {
+      console.error('❌ Error creating signed URL:', urlError);
+    }
+
+    const fileUrl = urlData?.signedUrl || '';
+    console.log('✅ File uploaded and signed URL generated');
 
     // Save submission to database
     console.log('💾 Saving submission to database...');
