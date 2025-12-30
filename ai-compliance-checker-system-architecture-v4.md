@@ -1,8 +1,8 @@
 # AI Compliance Checker - System Architecture v4
 
-**Version:** 4.0  
-**Last Updated:** December 18, 2024  
-**Status:** Phase 2 Complete - Production-Ready MVP with Reference Images Feature
+**Version:** 4.1  
+**Last Updated:** December 30, 2025  
+**Status:** Phase 2 Complete + Security Hardened - Production-Ready with Secure Storage
 
 ---
 
@@ -14,7 +14,9 @@ This document describes the complete architecture of the AI Compliance Checker a
 
 **Current state:** Fully functional MVP ready for pilot clients. Supports image uploads, real-time AI analysis via OpenAI GPT-4o, database-driven guidelines with visual reference images, submission tracking, and ghost mode for onboarding validation.
 
-**NEW in v4:** Reference images feature allows admins to upload example images that the AI uses as visual references when analyzing submissions. Dramatically improves accuracy for logo recognition and visual compliance checking.
+**NEW in v4:** Reference images feature allows admins to upload example images that the AI uses as visual references when analyzing submissions. Dramatically improves accuracy for logo recognition and visual compliance checking. 
+
+**SECURITY UPDATE in v4.1 (Dec 30, 2025):** Storage bucket secured with private access and signed URLs. All file access now uses temporary signed URLs with 1-hour expiration, preventing unauthorized access to uploaded assets and reference images.
 
 ---
 
@@ -37,6 +39,7 @@ This document describes the complete architecture of the AI Compliance Checker a
 15. [Data Flow Example](#15-data-flow-example)
 16. [Testing Checklist](#16-testing-checklist)
 17. [Next Steps](#17-next-steps)
+18. [Security Update Log](#18-security-update-log)
 
 ---
 
@@ -212,7 +215,7 @@ Accepts: `multipart/form-data` with:
 6. Send to OpenAI GPT-4o Vision API
 7. Parse AI response (handles JSON extraction from markdown code blocks)
 8. Upload submission file to Supabase Storage (`assets` bucket, `submissions/` folder)
-9. Generate public URL for uploaded file
+9. Generate signed URL for uploaded file (1-hour expiration)
 10. Save submission record to `submissions` table with all metadata
 11. Check ghost mode setting from `app_settings` table
 12. Return appropriate response based on ghost mode status
@@ -424,7 +427,8 @@ CREATE TABLE app_settings (
 
 **Configuration:**
 - **Bucket name:** `assets`
-- **Public access:** ✅ Enabled (⚠️ TODO: Make private before production)
+- **Public access:** ❌ DISABLED (Private bucket - Updated Dec 30, 2025)
+- **Access method:** Signed URLs with 1-hour expiration
 - **Folder structure:** 
   - `submissions/[timestamp]-[random].[ext]` - Submitted assets
   - `reference-images/[asset-type-name]/[timestamp]-[random].[ext]` - Reference images (NEW)
@@ -448,11 +452,11 @@ USING (bucket_id = 'assets');
 - Example submission: `https://ufyavbadxsntzcicluqa.supabase.co/storage/v1/object/public/assets/submissions/1766018295374-k4tlh9.PNG`
 - Example reference image: `https://ufyavbadxsntzcicluqa.supabase.co/storage/v1/object/public/assets/reference-images/logo/1734470400000-k7m2p9.png`
 
-⚠️ **CRITICAL SECURITY TODO:** 
-Before first paid client:
-1. Make bucket private
-2. Use signed URLs with expiration (1 hour)
-3. Update `server.js` to generate signed URLs instead of public URLs
+✅ **SECURITY STATUS (Updated December 30, 2025):**
+1. ✅ Bucket is private
+2. ✅ Signed URLs implemented (1-hour expiration)
+3. ✅ server.js generates signed URLs using `createSignedUrl()`
+4. ✅ Tested and working for uploads, downloads, and reference images
 
 **Why this matters:**
 - Sponsors don't want competitors seeing unreleased assets
@@ -667,7 +671,7 @@ const messages = [
 
 ### Testing Results
 
-**Logo Recognition Test (December 18, 2024):**
+**Logo Recognition Test (December 18, 2025):**
 - Asset type: "Magazine Image"
 - Reference image: Black Apple logo on white background
 - Guidelines: Must contain exact Apple logo, dark on light background
@@ -846,8 +850,7 @@ const messages = [
 9. Supabase Storage upload
    - Generate unique filename (timestamp + random)
    - Upload submission to assets/submissions/ folder
-   - Get public URL
-   - Continue if upload fails (graceful degradation)
+   - Generate signed URL (1-hour expiration)
    ↓
 10. Database insert
     - Save submission record with all metadata
@@ -1113,7 +1116,7 @@ SUPABASE_SERVICE_KEY=your_service_key_here
 
 ## 11. Key Features Summary
 
-### ✅ Working Features (Phase 2 COMPLETE - December 18, 2024)
+### ✅ Working Features (Phase 2 COMPLETE - December 18, 2025)
 
 **Submitter Interface:**
 - ✅ File upload (drag-and-drop + browse)
@@ -1180,9 +1183,12 @@ SUPABASE_SERVICE_KEY=your_service_key_here
 
 ## 12. Known Limitations & TODOs
 
-### 🔒 Security (CRITICAL - Before First Paid Client)
+### 🔒 Security
 
-- ⚠️ **Storage bucket is PUBLIC** → Switch to private + signed URLs
+**✅ COMPLETED (December 30, 2025):**
+- ✅ **Storage bucket is PRIVATE** - Signed URLs implemented
+- ✅ Files no longer accessible via public URLs
+- ✅ Temporary URLs expire after 1 hour
 - ⚠️ **Single shared admin password** → Individual accounts with email/password
 - ⚠️ **No submitter authentication** → Add magic links
 - ⚠️ **RLS policies too permissive** → Restrict per `client_id`
@@ -1191,23 +1197,6 @@ SUPABASE_SERVICE_KEY=your_service_key_here
 - ⚠️ **No rate limiting** → Add to prevent abuse
 - ⚠️ **No HTTPS in dev** → Required for production
 
-**How to fix storage security (15 minutes):**
-1. Go to Supabase → Storage → `assets` bucket
-2. Toggle bucket to PRIVATE
-3. Update `server.js` line ~280 (getPublicUrl):
-```javascript
-// CHANGE FROM:
-const { data: urlData } = supabase.storage
-  .from('assets')
-  .getPublicUrl(filePath);
-
-// TO:
-const { data: urlData, error } = await supabase.storage
-  .from('assets')
-  .createSignedUrl(filePath, 3600); // Expires in 1 hour
-```
-4. Test upload/download still works
-5. Update reference image fetching to use signed URLs too
 
 ---
 
@@ -1554,6 +1543,7 @@ npm run dev
 ```
 
 **11-15. [Same as before: upload, save, ghost mode check, respond, cleanup]**
+**Note:** As of v4.1, all URLs are signed URLs with 1-hour expiration (not public URLs).
 
 **16. Frontend receives response**
 - After 12 seconds total, fetch resolves
@@ -1587,6 +1577,8 @@ npm run dev
 - [ ] Click "browse" and select image (should show preview)
 - [ ] Try uploading non-image file (should show error)
 - [ ] Try uploading file >10MB (should show error)
+- [ ] Verify file_url in database is a signed URL (contains `/object/sign/` and `?token=`)
+- [ ] Copy signed URL and verify it expires after 1 hour
 - [ ] Select different asset types from dropdown
 - [ ] Click "Review Asset" (should show loading spinner)
 - [ ] Wait for results (5-15 seconds, longer if reference images)
@@ -1752,20 +1744,18 @@ npm run dev
 
 ### Immediate (Before Customer Discovery)
 
-**1. Test Reference Images Feature (1-2 hours)**
+**1. ✅ COMPLETED: Security Hardening (December 30, 2025)**
+- ✅ Bucket is private
+- ✅ Signed URLs implemented
+- ✅ Tested and working
+
+**2. Test Reference Images Feature (1-2 hours)**
 - [ ] Create 2-3 asset types with comprehensive guidelines
 - [ ] Upload 2-4 reference images per asset type
 - [ ] Test with 10-20 sample assets
 - [ ] Measure accuracy improvement
 - [ ] Document what works vs. what doesn't
 - [ ] Refine prompts and reference images based on results
-
-**2. Security Hardening (2 hours) - CRITICAL**
-- [ ] Switch storage bucket to private
-- [ ] Implement signed URLs with 1-hour expiration
-- [ ] Test upload/download still works
-- [ ] Verify reference images still load
-- [ ] Document security changes
 
 **3. Documentation Updates (30 minutes)**
 - [ ] Update README with reference images feature
@@ -1839,14 +1829,57 @@ npm run dev
 
 ---
 
+## 18. Security Update Log
+
+### December 30, 2025 - Storage Security Implementation
+
+**Changes Made:**
+
+1. **Supabase Storage Bucket Secured**
+   - Changed `assets` bucket from public to private
+   - Public URLs no longer work
+   - All access now requires authentication
+
+2. **Signed URLs Implemented**
+   - Backend generates temporary signed URLs (1-hour expiration)
+   - Updated `server.js`:
+     - Line 69-105: `fetchReferenceImageAsBase64()` now uses signed URLs
+     - Line 148: Pass whole reference image object
+     - Line 284-292: `createSignedUrl()` for uploaded submissions
+   - All file access now uses time-limited URLs
+
+3. **Testing Completed**
+   - ✅ File uploads work with signed URLs
+   - ✅ Reference images load correctly
+   - ✅ Admin dashboard displays images
+   - ✅ AI analysis functions with reference images
+   - ✅ URLs expire after 1 hour as expected
+
+**Security Improvements:**
+- Files no longer accessible via permanent public URLs
+- Unauthorized users cannot access uploaded assets
+- Temporary URLs provide time-limited access
+- Enhanced privacy for sensitive brand assets
+
+**Breaking Changes:**
+- Old public URLs in database will no longer work
+- Frontend must request new signed URLs for files older than 1 hour
+
+**Recommendation:**
+- For production, consider implementing automatic URL refresh for admin sessions >1 hour
+- Monitor for any issues with expired URLs in long admin sessions
+
+---
+
 ## Appendix A: Version History
 
 | Version | Date | Major Changes |
 |---------|------|---------------|
-| 1.0 | Dec 12, 2024 | Initial architecture (Phase 1 complete) |
-| 2.0 | Dec 17, 2024 | Phase 2 complete architecture documentation |
-| 3.0 | Dec 17, 2024 | Updated with complete Phase 2 features |
-| **4.0** | **Dec 18, 2024** | **Reference images feature added** |
+| 1.0 | Dec 12, 2025 | Initial architecture (Phase 1 complete) |
+| 2.0 | Dec 17, 2025 | Phase 2 complete architecture documentation |
+| 3.0 | Dec 17, 2025 | Updated with complete Phase 2 features |
+| **4.0** | **Dec 18, 2025** | **Reference images feature added** |
+| **4.1** | **Dec 30, 2025** | **Security hardening: Private bucket + signed URLs** |
 
 ---
 
@@ -1964,6 +1997,6 @@ const messages = [
 
 **END OF DOCUMENT**
 
-**Last Updated:** December 18, 2024  
-**Version:** 4.0 - Phase 2 Complete with Reference Images Feature  
+**Last Updated:** December 30, 2025  
+**Version:** 4.1 - Phase 2 Complete + Security Hardened  
 **Next Review:** After first pilot feedback
