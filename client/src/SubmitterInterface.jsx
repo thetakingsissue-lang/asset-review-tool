@@ -29,7 +29,6 @@ function SubmitterInterface() {
         if (error) throw error;
         
         setAssetTypes(data || []);
-        // Set first asset type as default if available
         if (data && data.length > 0) {
           setAssetType(data[0].name);
         }
@@ -105,15 +104,12 @@ function SubmitterInterface() {
         throw new Error(data.error || 'Failed to review asset');
       }
 
-      // Check if ghost mode is active
       if (data.ghostMode) {
-        // Ghost mode: Show generic success message
         setResult({
           ghostMode: true,
           message: data.message
         });
       } else {
-        // Normal mode: Show AI results
         setResult(data.result);
       }
     } catch (err) {
@@ -130,158 +126,218 @@ function SubmitterInterface() {
     setError(null);
   };
 
+  const formatFileSize = (bytes) => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  };
+
   return (
-    <div className="app">
-      <header className="header">
-        <h1>Asset Review Tool</h1>
-        <p>AI-powered brand compliance checker using GPT-4o Vision</p>
+    <div className="submit-app">
+      {/* Minimal header */}
+      <header className="submit-header">
+        <div className="submit-header-content">
+          <h1 className="submit-title">Asset Submission</h1>
+        </div>
       </header>
 
-      <main className="main">
-        <form onSubmit={handleSubmit} className="review-form">
-          <div
-            className={`upload-area ${dragActive ? 'drag-active' : ''} ${preview ? 'has-preview' : ''}`}
-            onDragEnter={handleDrag}
-            onDragLeave={handleDrag}
-            onDragOver={handleDrag}
-            onDrop={handleDrop}
-          >
-            {preview ? (
-              <div className="preview-container">
-                <img src={preview} alt="Preview" className="preview-image" />
-                <button type="button" className="remove-btn" onClick={handleReset}>
-                  Remove
-                </button>
+      <main className="submit-main">
+        <div className="submit-container">
+          {/* Left column: Form */}
+          <div className="submit-form-section">
+            <form onSubmit={handleSubmit} className="submit-form">
+              {/* Asset Type Selection */}
+              <div className="form-field">
+                <label htmlFor="assetType" className="field-label">
+                  Asset type
+                </label>
+                <select
+                  id="assetType"
+                  value={assetType}
+                  onChange={(e) => setAssetType(e.target.value)}
+                  className="field-select"
+                  disabled={assetTypes.length === 0}
+                >
+                  {assetTypes.length === 0 ? (
+                    <option>Loading...</option>
+                  ) : (
+                    assetTypes.map((type) => (
+                      <option key={type.name} value={type.name}>
+                        {type.name.charAt(0).toUpperCase() + type.name.slice(1)}
+                      </option>
+                    ))
+                  )}
+                </select>
               </div>
-            ) : (
-              <div className="upload-prompt">
-                <div className="upload-icon">
-                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                    <polyline points="17 8 12 3 7 8" />
-                    <line x1="12" y1="3" x2="12" y2="15" />
+
+              {/* Upload Area */}
+              <div className="form-field">
+                <label className="field-label">File</label>
+                <div
+                  className={`upload-zone ${dragActive ? 'upload-zone-active' : ''} ${preview ? 'upload-zone-filled' : ''}`}
+                  onDragEnter={handleDrag}
+                  onDragLeave={handleDrag}
+                  onDragOver={handleDrag}
+                  onDrop={handleDrop}
+                >
+                  {preview ? (
+                    <div className="file-preview">
+                      <div className="file-preview-image">
+                        <img src={preview} alt="Preview" />
+                      </div>
+                      <div className="file-preview-info">
+                        <span className="file-name">{file?.name}</span>
+                        <span className="file-size">{file && formatFileSize(file.size)}</span>
+                      </div>
+                      <button type="button" className="file-remove" onClick={handleReset}>
+                        Remove
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="upload-prompt">
+                      <div className="upload-icon-wrapper">
+                        <svg className="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                          <path d="M12 16V4m0 0L8 8m4-4l4 4" strokeLinecap="round" strokeLinejoin="round"/>
+                          <path d="M3 20h18" strokeLinecap="round"/>
+                        </svg>
+                      </div>
+                      <div className="upload-text">
+                        <label className="upload-button">
+                          <span>Choose file</span>
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/gif,image/webp"
+                            onChange={handleInputChange}
+                            className="sr-only"
+                          />
+                        </label>
+                        <span className="upload-or">or drag and drop</span>
+                      </div>
+                      <p className="upload-hint">PNG, JPG, GIF, WebP up to 10MB</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Error Message */}
+              {error && (
+                <div className="form-error">
+                  <svg className="error-icon" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd"/>
                   </svg>
+                  <span>{error}</span>
                 </div>
-                <p className="upload-text">
-                  Drag and drop your image here, or{' '}
-                  <label className="file-label">
-                    browse
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/png,image/gif,image/webp"
-                      onChange={handleInputChange}
-                      className="file-input"
-                    />
-                  </label>
-                </p>
-                <p className="upload-hint">Supports JPEG, PNG, GIF, WebP (max 10MB)</p>
-              </div>
-            )}
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="assetType">Asset Type</label>
-            <select
-              id="assetType"
-              value={assetType}
-              onChange={(e) => setAssetType(e.target.value)}
-              className="select-input"
-              disabled={assetTypes.length === 0}
-            >
-              {assetTypes.length === 0 ? (
-                <option>Loading asset types...</option>
-              ) : (
-                assetTypes.map((type) => (
-                  <option key={type.name} value={type.name}>
-                    {type.name.charAt(0).toUpperCase() + type.name.slice(1)}
-                    {type.description && ` - ${type.description}`}
-                  </option>
-                ))
               )}
-            </select>
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                className="submit-button"
+                disabled={!file || loading}
+              >
+                {loading ? (
+                  <>
+                    <span className="button-spinner"></span>
+                    <span>Checking compliance...</span>
+                  </>
+                ) : (
+                  'Submit for review'
+                )}
+              </button>
+            </form>
           </div>
 
-          <button
-            type="submit"
-            className={`submit-btn ${loading ? 'loading' : ''}`}
-            disabled={!file || loading}
-          >
-            {loading ? (
-              <>
-                <span className="spinner"></span>
-                Analyzing...
-              </>
+          {/* Divider */}
+          <div className="submit-divider"></div>
+
+          {/* Right column: Results */}
+          <div className="submit-results-section">
+            {!result ? (
+              /* Placeholder before submission */
+              <div className="results-placeholder">
+                <svg className="placeholder-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                <h3 className="placeholder-title">Results</h3>
+                <p className="placeholder-text">
+                  Upload an asset and submit it for review. Compliance results will appear here.
+                </p>
+              </div>
+            ) : result.ghostMode ? (
+              /* Ghost Mode Result */
+              <div className="result-card">
+                <div className="result-status result-status-submitted">
+                  <svg className="status-icon" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+                  </svg>
+                  <span>Submitted</span>
+                </div>
+                <div className="result-body">
+                  <p className="result-message">{result.message}</p>
+                  <p className="result-note">Your submission is under review. You'll receive feedback shortly.</p>
+                </div>
+              </div>
             ) : (
-              'Review Asset'
+              /* Normal Result */
+              <div className="result-card">
+                {/* Status Header */}
+                <div className={`result-status ${result.pass ? 'result-status-pass' : 'result-status-fail'}`}>
+                  {result.pass ? (
+                    <svg className="status-icon" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+                    </svg>
+                  ) : (
+                    <svg className="status-icon" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd"/>
+                    </svg>
+                  )}
+                  <span>{result.pass ? 'Pass' : 'Fail'}</span>
+                  <span className="result-confidence">{result.confidence}% confidence</span>
+                </div>
+
+                {/* Summary */}
+                <div className="result-body">
+                  <div className="result-section">
+                    <h3 className="result-section-title">Summary</h3>
+                    <p className="result-summary-text">{result.summary}</p>
+                  </div>
+
+                  {/* Issues List */}
+                  {result.violations && result.violations.length > 0 && (
+                    <div className="result-section">
+                      <h3 className="result-section-title">
+                        Issues ({result.violations.length})
+                      </h3>
+                      <ul className="issues-list">
+                        {result.violations.map((violation, index) => (
+                          <li key={index} className="issue-item">
+                            <svg className="issue-icon" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd"/>
+                            </svg>
+                            <span>{violation}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* No Issues */}
+                  {result.pass && (!result.violations || result.violations.length === 0) && (
+                    <div className="result-section">
+                      <div className="no-issues">
+                        <svg className="no-issues-icon" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+                        </svg>
+                        <span>No compliance issues detected</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             )}
-          </button>
-        </form>
-
-        {error && (
-          <div className="error-message">
-            <strong>Error:</strong> {error}
           </div>
-        )}
-
-        {result && (
-          result.ghostMode ? (
-            // Ghost Mode: Generic success message
-            <div className="results pass">
-              <div className="result-header">
-                <div className="status-badge pass">
-                  SUBMITTED
-                </div>
-              </div>
-              <div className="result-summary">
-                <h3>Submission Received</h3>
-                <p>{result.message}</p>
-                <p style={{ marginTop: '1rem', fontSize: '0.9rem', color: '#666' }}>
-                  Our team will review your submission and get back to you soon.
-                </p>
-              </div>
-            </div>
-          ) : (
-            // Normal Mode: Show AI results
-            <div className={`results ${result.pass ? 'pass' : 'fail'}`}>
-              <div className="result-header">
-                <div className={`status-badge ${result.pass ? 'pass' : 'fail'}`}>
-                  {result.pass ? 'PASS' : 'FAIL'}
-                </div>
-                <div className="confidence">
-                  <span className="confidence-label">Confidence</span>
-                  <span className="confidence-value">{result.confidence}%</span>
-                </div>
-              </div>
-
-              <div className="result-summary">
-                <h3>Summary</h3>
-                <p>{result.summary}</p>
-              </div>
-
-              {result.violations && result.violations.length > 0 && (
-                <div className="violations">
-                  <h3>Violations Found ({result.violations.length})</h3>
-                  <ul>
-                    {result.violations.map((violation, index) => (
-                      <li key={index}>{violation}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {result.pass && (!result.violations || result.violations.length === 0) && (
-                <div className="no-violations">
-                  <p>No violations detected. Asset meets brand guidelines.</p>
-                </div>
-              )}
-            </div>
-          )
-        )}
+        </div>
       </main>
-
-      <footer className="footer">
-        <p>Powered by OpenAI GPT-4o Vision</p>
-      </footer>
     </div>
   );
 }
