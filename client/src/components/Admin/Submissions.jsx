@@ -23,6 +23,8 @@ function Submissions() {
   
   // Modal state
   const [selectedSubmission, setSelectedSubmission] = useState(null);
+  const [selectedSubmissionSignedUrl, setSelectedSubmissionSignedUrl] = useState(null);
+  const [loadingSignedUrl, setLoadingSignedUrl] = useState(false);
   const [showModal, setShowModal] = useState(false);
 
   // Fetch submissions on component mount
@@ -94,14 +96,81 @@ function Submissions() {
     setFilteredSubmissions(filtered);
   };
 
-  const handleViewDetails = (submission) => {
+  // Helper function to extract storage path from file_url
+  const getStoragePathFromUrl = (fileUrl) => {
+    if (!fileUrl) return null;
+    
+    // Handle both old public URLs and any stored paths
+    // Public URL format: https://[project].supabase.co/storage/v1/object/public/assets/submissions/filename.ext
+    // Signed URL format: https://[project].supabase.co/storage/v1/object/sign/assets/submissions/filename.ext
+    
+    try {
+      const url = new URL(fileUrl);
+      const pathname = url.pathname;
+      
+      // Extract path after /assets/
+      const assetsIndex = pathname.indexOf('/assets/');
+      if (assetsIndex !== -1) {
+        // Return the path after 'assets/' (e.g., 'submissions/filename.ext')
+        return pathname.substring(assetsIndex + 8); // 8 = length of '/assets/'
+      }
+      
+      // If the file_url is already just a storage path (e.g., 'submissions/filename.ext')
+      if (fileUrl.startsWith('submissions/')) {
+        return fileUrl;
+      }
+      
+      return null;
+    } catch (err) {
+      // If it's not a valid URL, check if it's a direct path
+      if (fileUrl.startsWith('submissions/')) {
+        return fileUrl;
+      }
+      console.error('Error parsing file URL:', err);
+      return null;
+    }
+  };
+
+  // Helper function to generate signed URL
+  const getSignedUrl = async (fileUrl) => {
+    const storagePath = getStoragePathFromUrl(fileUrl);
+    if (!storagePath) return null;
+
+    try {
+      const { data, error } = await supabase.storage
+        .from('assets')
+        .createSignedUrl(storagePath, 3600); // 1 hour expiration
+
+      if (error) {
+        console.error('Error creating signed URL:', error);
+        return null;
+      }
+
+      return data.signedUrl;
+    } catch (err) {
+      console.error('Error getting signed URL:', err);
+      return null;
+    }
+  };
+
+  const handleViewDetails = async (submission) => {
     setSelectedSubmission(submission);
+    setSelectedSubmissionSignedUrl(null);
     setShowModal(true);
+    
+    // Generate signed URL for the image
+    if (submission.file_url) {
+      setLoadingSignedUrl(true);
+      const signedUrl = await getSignedUrl(submission.file_url);
+      setSelectedSubmissionSignedUrl(signedUrl);
+      setLoadingSignedUrl(false);
+    }
   };
 
   const handleCloseModal = () => {
     setShowModal(false);
     setSelectedSubmission(null);
+    setSelectedSubmissionSignedUrl(null);
   };
 
   const formatDate = (dateString) => {
@@ -364,11 +433,26 @@ function Submissions() {
             </div>
 
             {/* Asset Preview */}
-            {selectedSubmission.file_url && (
-              <div style={{ marginBottom: '1.5rem' }}>
-                <h4 style={{ fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.5rem' }}>Preview</h4>
+            <div style={{ marginBottom: '1.5rem' }}>
+              <h4 style={{ fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.5rem' }}>Preview</h4>
+              {loadingSignedUrl ? (
+                <div style={{
+                  width: '100%',
+                  height: '200px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '4px',
+                  backgroundColor: '#f9fafb',
+                  color: '#6b7280',
+                  fontSize: '0.875rem'
+                }}>
+                  Loading image...
+                </div>
+              ) : selectedSubmissionSignedUrl ? (
                 <img 
-                  src={selectedSubmission.file_url} 
+                  src={selectedSubmissionSignedUrl} 
                   alt={selectedSubmission.file_name}
                   style={{
                     width: '100%',
@@ -379,8 +463,23 @@ function Submissions() {
                     backgroundColor: '#f9fafb'
                   }}
                 />
-              </div>
-            )}
+              ) : (
+                <div style={{
+                  width: '100%',
+                  height: '200px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '4px',
+                  backgroundColor: '#f9fafb',
+                  color: '#9ca3af',
+                  fontSize: '0.875rem'
+                }}>
+                  Unable to load image preview
+                </div>
+              )}
+            </div>
 
             {/* Submission Info */}
             <div style={{ marginBottom: '1.5rem' }}>
@@ -426,9 +525,9 @@ function Submissions() {
 
             {/* Actions */}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
-              {selectedSubmission.file_url && (
+              {selectedSubmissionSignedUrl && (
                 <a
-                  href={selectedSubmission.file_url}
+                  href={selectedSubmissionSignedUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{

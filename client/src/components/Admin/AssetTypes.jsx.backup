@@ -23,7 +23,6 @@ function AssetTypes() {
   });
   const [referenceImages, setReferenceImages] = useState([]);
   const [uploadingImages, setUploadingImages] = useState(false);
-  const [loadingImages, setLoadingImages] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
@@ -50,36 +49,7 @@ function AssetTypes() {
     }
   };
 
-  // Helper function to generate signed URLs for reference images
-  const getSignedUrlsForImages = async (images) => {
-    if (!images || images.length === 0) return [];
-
-    const imagesWithSignedUrls = await Promise.all(
-      images.map(async (img) => {
-        if (!img.storagePath) return img;
-
-        try {
-          const { data, error } = await supabase.storage
-            .from('assets')
-            .createSignedUrl(img.storagePath, 3600); // 1 hour expiration
-
-          if (error) {
-            console.error('Error creating signed URL for:', img.storagePath, error);
-            return { ...img, signedUrl: null };
-          }
-
-          return { ...img, signedUrl: data.signedUrl };
-        } catch (err) {
-          console.error('Error getting signed URL:', err);
-          return { ...img, signedUrl: null };
-        }
-      })
-    );
-
-    return imagesWithSignedUrls;
-  };
-
-  const handleOpenModal = async (type = null) => {
+  const handleOpenModal = (type = null) => {
     if (type) {
       // Editing existing type
       setEditingType(type);
@@ -88,16 +58,8 @@ function AssetTypes() {
         description: type.description,
         guidelines: type.guidelines
       });
-      
-      // Load existing reference images with signed URLs
-      if (type.reference_images && type.reference_images.length > 0) {
-        setLoadingImages(true);
-        const imagesWithUrls = await getSignedUrlsForImages(type.reference_images);
-        setReferenceImages(imagesWithUrls);
-        setLoadingImages(false);
-      } else {
-        setReferenceImages([]);
-      }
+      // Load existing reference images
+      setReferenceImages(type.reference_images || []);
     } else {
       // Adding new type
       setEditingType(null);
@@ -136,7 +98,7 @@ function AssetTypes() {
     setError('');
 
     try {
-      const uploadedImages = [];
+      const uploadedUrls = [];
 
       for (const file of files) {
         // Validate file type
@@ -148,31 +110,29 @@ function AssetTypes() {
         const timestamp = Date.now();
         const randomStr = Math.random().toString(36).substring(7);
         const fileExt = file.name.split('.').pop();
-        const storagePath = `reference-images/${formData.name || 'temp'}/${timestamp}-${randomStr}.${fileExt}`;
+        const fileName = `reference-images/${formData.name || 'temp'}/${timestamp}-${randomStr}.${fileExt}`;
 
         // Upload to Supabase Storage
         const { data, error } = await supabase.storage
           .from('assets')
-          .upload(storagePath, file);
+          .upload(fileName, file);
 
         if (error) throw error;
 
-        // Generate signed URL for immediate display
-        const { data: signedData, error: signedError } = await supabase.storage
+        // Get public URL
+        const { data: urlData } = supabase.storage
           .from('assets')
-          .createSignedUrl(storagePath, 3600); // 1 hour expiration
+          .getPublicUrl(fileName);
 
-        if (signedError) throw signedError;
-
-        uploadedImages.push({
+        uploadedUrls.push({
+          url: urlData.publicUrl,
           fileName: file.name,
-          storagePath: storagePath,
-          signedUrl: signedData.signedUrl
+          storagePath: fileName
         });
       }
 
       // Add to reference images array
-      setReferenceImages(prev => [...prev, ...uploadedImages]);
+      setReferenceImages(prev => [...prev, ...uploadedUrls]);
     } catch (err) {
       console.error('Error uploading reference images:', err);
       setError('Failed to upload images: ' + err.message);
@@ -214,17 +174,11 @@ function AssetTypes() {
     }
 
     try {
-      // Prepare reference images for storage (only save storagePath and fileName, not signed URLs)
-      const referenceImagesForDb = referenceImages.map(img => ({
-        fileName: img.fileName,
-        storagePath: img.storagePath
-      }));
-
       const dataToSave = {
         name: formData.name.trim(),
         description: formData.description.trim(),
         guidelines: formData.guidelines.trim(),
-        reference_images: referenceImagesForDb,
+        reference_images: referenceImages,
         updated_at: new Date().toISOString()
       };
 
@@ -575,16 +529,6 @@ function AssetTypes() {
                   </div>
                 )}
 
-                {loadingImages && (
-                  <div style={{ 
-                    color: '#6b7280', 
-                    fontSize: '0.875rem', 
-                    marginBottom: '1rem' 
-                  }}>
-                    Loading reference images...
-                  </div>
-                )}
-
                 {/* Reference Images Grid */}
                 {referenceImages.length > 0 && (
                   <div style={{
@@ -601,32 +545,15 @@ function AssetTypes() {
                         overflow: 'hidden',
                         aspectRatio: '1'
                       }}>
-                        {img.signedUrl ? (
-                          <img
-                            src={img.signedUrl}
-                            alt={`Reference ${index + 1}`}
-                            style={{
-                              width: '100%',
-                              height: '100%',
-                              objectFit: 'cover'
-                            }}
-                          />
-                        ) : (
-                          <div style={{
+                        <img
+                          src={img.url}
+                          alt={`Reference ${index + 1}`}
+                          style={{
                             width: '100%',
                             height: '100%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            backgroundColor: '#f3f4f6',
-                            color: '#9ca3af',
-                            fontSize: '0.75rem',
-                            textAlign: 'center',
-                            padding: '0.5rem'
-                          }}>
-                            Unable to load image
-                          </div>
-                        )}
+                            objectFit: 'cover'
+                          }}
+                        />
                         <button
                           type="button"
                           onClick={() => handleRemoveReferenceImage(index)}
