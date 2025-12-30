@@ -20,7 +20,7 @@ Organizations deploy custom AI "gatekeepers" that sit between submitters and rev
 
 ---
 
-## ✅ Current State (Phase 2 COMPLETE - December 2024)
+## ✅ Current State (Phase 2 COMPLETE + Security Hardened - December 2025)
 
 ### What's Built & Working:
 
@@ -33,7 +33,7 @@ Organizations deploy custom AI "gatekeepers" that sit between submitters and rev
 - ✅ Password-protected admin access
 - ✅ Supabase database connected
 
-**Phase 2 (COMPLETE - December 18, 2024):**
+**Phase 2 (COMPLETE - December 18, 2025):**
 - ✅ **Asset Type Management UI** - Full CRUD interface
   - Add, edit, delete asset types
   - Custom guidelines per asset type
@@ -57,6 +57,20 @@ Organizations deploy custom AI "gatekeepers" that sit between submitters and rev
   - Color-coded badges
   - Responsive design
 
+**Security Hardening (COMPLETE - December 30, 2025):**
+- ✅ **Private Storage Bucket** - Assets bucket secured
+  - Public access disabled
+  - Files no longer accessible via public URLs
+- ✅ **Signed URLs Implemented** - 1-hour expiration
+  - Backend generates temporary signed URLs
+  - Uploaded files use signed URLs
+  - Reference images use signed URLs
+- ✅ **Tested and Working** - All flows verified
+  - File uploads work
+  - Reference images load correctly
+  - Admin dashboard displays images
+  - AI analysis functions normally
+
 ### What's NOT Built Yet:
 
 **Phase 3 (Planned - After First Pilots):**
@@ -66,7 +80,6 @@ Organizations deploy custom AI "gatekeepers" that sit between submitters and rev
 - One-click learning from AI mistakes
 - PDF guideline upload and parsing
 - Multi-tenant client isolation (client_id filtering)
-- Private storage with signed URLs (SECURITY - do before pilots!)
 - Submission gating with custom pass/fail messages
 
 ---
@@ -189,16 +202,17 @@ CREATE TABLE app_settings (
 
 **Configuration:**
 - **Bucket name:** `assets`
-- **Public access:** ✅ Enabled (⚠️ TODO: Make private before production)
+- **Public access:** ❌ DISABLED (Private bucket)
+- **Access method:** Signed URLs with 1-hour expiration
 - **Folder structure:** 
   - `submissions/[timestamp]-[random].[ext]` - Submitted assets
   - `reference-images/[asset-type]/[timestamp]-[random].[ext]` - Reference images
 
-⚠️ **CRITICAL SECURITY TODO:** 
-Before first paid client:
-1. Make bucket private
-2. Use signed URLs with expiration (1 hour)
-3. Update server.js to generate signed URLs instead of public URLs
+✅ **Security Status (Updated December 27, 2024):**
+1. ✅ Bucket is private
+2. ✅ Signed URLs implemented (1-hour expiration)
+3. ✅ server.js generates signed URLs using `createSignedUrl()`
+4. ✅ Tested and working for uploads, downloads, and reference images
 
 ---
 
@@ -334,7 +348,7 @@ View and filter all past submissions:
 - Admin shell (login, routing, tabs)
 - Supabase setup and connection
 
-### ✅ Phase 2: Admin Features (COMPLETE - December 18, 2024)
+### ✅ Phase 2: Admin Features (COMPLETE - December 18, 2025)
 - Asset Type Management with CRUD interface
 - Reference Images upload and AI integration
 - Submissions History with filtering
@@ -342,10 +356,10 @@ View and filter all past submissions:
 - UI polish and professional design
 
 ### 🚧 Phase 3: Production Readiness (Before First Pilot)
-**CRITICAL SECURITY:**
-- [ ] Switch storage bucket to private
-- [ ] Implement signed URLs (1-hour expiration)
-- [ ] Test upload/download still works
+**CRITICAL SECURITY (COMPLETED Dec 30, 2025):**
+- [x] Switch storage bucket to private
+- [x] Implement signed URLs (1-hour expiration)
+- [x] Test upload/download still works
 
 **AUTHENTICATION:**
 - [ ] Magic link authentication for submitters
@@ -386,23 +400,25 @@ View and filter all past submissions:
 - File type validation
 - File size limits (10MB)
 
-**⚠️ TODO Before Production:**
-1. **Storage Security (CRITICAL):**
-   - Make `assets` bucket private
-   - Generate signed URLs with 1-hour expiration
-   - Prevent public access to uploaded files
+**✅ COMPLETED (December 30, 2025):**
+1. **Storage Security:**
+   - ✅ `assets` bucket is private
+   - ✅ Signed URLs with 1-hour expiration implemented
+   - ✅ Public access to files prevented
 
-2. **Authentication:**
+**⚠️ TODO Before Production:**
+
+1. **Authentication:**
    - Replace single password with individual accounts
    - Add magic links for submitters
    - Implement session expiration (30 days)
 
-3. **Multi-Tenant Isolation:**
+2. **Multi-Tenant Isolation:**
    - Add `client_id` filtering to all queries
    - Update RLS policies to enforce per-client access
    - Test that Client A cannot see Client B's data
 
-4. **Rate Limiting:**
+3. **Rate Limiting:**
    - Prevent abuse of upload endpoint
    - Limit submissions per IP/user
 
@@ -428,7 +444,7 @@ View and filter all past submissions:
 ### Current Limitations:
 
 1. **File formats:** Only PNG, JPG, GIF, WebP (no PDF, video, PPTX yet)
-2. **Storage security:** Bucket is public (files accessible via URL)
+2. **Signed URL expiration:** URLs expire after 1 hour (expected behavior - enhances security)
 3. **Authentication:** Single shared admin password
 4. **No submitter accounts:** Anyone can upload
 5. **No email notifications:** No automated communication
@@ -446,9 +462,9 @@ View and filter all past submissions:
 ## 🎯 TODO Before First Pilot
 
 ### Must-Do (Security):
-- [ ] Make storage bucket private + signed URLs
-- [ ] Test all upload/download flows still work
-- [ ] Verify submitters cannot access each other's files
+- [x] Make storage bucket private + signed URLs (COMPLETED Dec 30, 2025)
+- [x] Test all upload/download flows still work (COMPLETED Dec 30, 2025)
+- [ ] Add client_id filtering for multi-tenant isolation
 
 ### Should-Do (Functionality):
 - [ ] Create 3-4 comprehensive guideline examples
@@ -513,6 +529,6 @@ View and filter all past submissions:
 
 ---
 
-**Last Updated:** December 18, 2024  
-**Version:** 2.0 - Phase 2 Complete (Reference Images Feature Added)  
-**Project Status:** Production-Ready MVP (Security hardening needed before pilots)
+**Last Updated:** December 30, 2025  
+**Version:** 2.1 - Phase 2 Complete + Security Hardened  
+**Project Status:** Production-Ready MVP with Secure Storage (Ready for shadow audits)
