@@ -16,6 +16,7 @@ function SubmitterInterface() {
   const [error, setError] = useState(null);
   const [dragActive, setDragActive] = useState(false);
   const [assetTypes, setAssetTypes] = useState([]);
+  const [submittedPreview, setSubmittedPreview] = useState(null);
 
   // Fetch asset types from database on component mount
   useEffect(() => {
@@ -47,6 +48,7 @@ function SubmitterInterface() {
       setPreview(URL.createObjectURL(selectedFile));
       setResult(null);
       setError(null);
+      setSubmittedPreview(null);
     } else {
       setError('Please select a valid image file (JPEG, PNG, GIF, or WebP)');
     }
@@ -87,6 +89,9 @@ function SubmitterInterface() {
     setLoading(true);
     setError(null);
     setResult(null);
+    
+    // Save the preview before submission so we can show it in results
+    setSubmittedPreview(preview);
 
     const formData = new FormData();
     formData.append('file', file);
@@ -114,6 +119,7 @@ function SubmitterInterface() {
       }
     } catch (err) {
       setError(err.message || 'An error occurred during review');
+      setSubmittedPreview(null);
     } finally {
       setLoading(false);
     }
@@ -124,6 +130,7 @@ function SubmitterInterface() {
     setPreview(null);
     setResult(null);
     setError(null);
+    setSubmittedPreview(null);
   };
 
   const formatFileSize = (bytes) => {
@@ -134,10 +141,14 @@ function SubmitterInterface() {
 
   return (
     <div className="submit-app">
-      {/* Minimal header */}
+      {/* Header with SubmitClear logo */}
       <header className="submit-header">
         <div className="submit-header-content">
-          <h1 className="submit-title">Asset Submission</h1>
+          <img 
+            src="/SubmitClear_Logo.png" 
+            alt="SubmitClear" 
+            className="submit-logo"
+          />
         </div>
       </header>
 
@@ -266,6 +277,12 @@ function SubmitterInterface() {
             ) : result.ghostMode ? (
               /* Ghost Mode Result */
               <div className="result-card">
+                {/* Show submitted image */}
+                {submittedPreview && (
+                  <div className="result-image-preview">
+                    <img src={submittedPreview} alt="Submitted asset" />
+                  </div>
+                )}
                 <div className="result-status result-status-submitted">
                   <svg className="status-icon" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
@@ -280,6 +297,13 @@ function SubmitterInterface() {
             ) : (
               /* Normal Result */
               <div className="result-card">
+                {/* Show submitted image */}
+                {submittedPreview && (
+                  <div className="result-image-preview">
+                    <img src={submittedPreview} alt="Submitted asset" />
+                  </div>
+                )}
+                
                 {/* Status Header */}
                 <div className={`result-status ${result.pass ? 'result-status-pass' : 'result-status-fail'}`}>
                   {result.pass ? (
