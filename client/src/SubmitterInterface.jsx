@@ -139,6 +139,34 @@ function SubmitterInterface() {
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   };
 
+  // Helper function to convert email addresses to clickable links
+  const renderMessageWithLinks = (message) => {
+    if (!message) return null;
+    
+    // Replace email addresses with clickable mailto links
+    const emailRegex = /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)/gi;
+    const parts = message.split(emailRegex);
+    
+    return parts.map((part, index) => {
+      if (part.match(emailRegex)) {
+        return (
+          <a 
+            key={index} 
+            href={`mailto:${part}`}
+            style={{
+              color: '#2563eb',
+              textDecoration: 'underline',
+              fontWeight: '500'
+            }}
+          >
+            {part}
+          </a>
+        );
+      }
+      return <span key={index}>{part}</span>;
+    });
+  };
+
   return (
     <div className="submit-app">
       {/* Header with SubmitClear logo */}
@@ -353,6 +381,28 @@ function SubmitterInterface() {
                           <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
                         </svg>
                         <span>No compliance issues detected</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Custom Message - NEW */}
+                  {result.customMessage && (
+                    <div className="result-section">
+                      <div className={`custom-message ${result.pass ? 'custom-message-pass' : 'custom-message-fail'}`}>
+                        <div className="custom-message-icon">
+                          {result.pass ? (
+                            <svg viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd"/>
+                            </svg>
+                          ) : (
+                            <svg viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd"/>
+                            </svg>
+                          )}
+                        </div>
+                        <div className="custom-message-text">
+                          {renderMessageWithLinks(result.customMessage)}
+                        </div>
                       </div>
                     </div>
                   )}

@@ -19,7 +19,9 @@ function AssetTypes() {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    guidelines: ''
+    guidelines: '',
+    pass_message: '',
+    fail_message: ''
   });
   const [referenceImages, setReferenceImages] = useState([]);
   const [uploadingImages, setUploadingImages] = useState(false);
@@ -86,7 +88,9 @@ function AssetTypes() {
       setFormData({
         name: type.name,
         description: type.description,
-        guidelines: type.guidelines
+        guidelines: type.guidelines,
+        pass_message: type.pass_message || '',
+        fail_message: type.fail_message || ''
       });
       
       // Load existing reference images with signed URLs
@@ -104,7 +108,9 @@ function AssetTypes() {
       setFormData({
         name: '',
         description: '',
-        guidelines: ''
+        guidelines: '',
+        pass_message: '',
+        fail_message: ''
       });
       setReferenceImages([]);
     }
@@ -115,7 +121,13 @@ function AssetTypes() {
   const handleCloseModal = () => {
     setShowModal(false);
     setEditingType(null);
-    setFormData({ name: '', description: '', guidelines: '' });
+    setFormData({ 
+      name: '', 
+      description: '', 
+      guidelines: '', 
+      pass_message: '', 
+      fail_message: '' 
+    });
     setReferenceImages([]);
     setError('');
   };
@@ -224,6 +236,8 @@ function AssetTypes() {
         name: formData.name.trim(),
         description: formData.description.trim(),
         guidelines: formData.guidelines.trim(),
+        pass_message: formData.pass_message.trim(),
+        fail_message: formData.fail_message.trim(),
         reference_images: referenceImagesForDb,
         updated_at: new Date().toISOString()
       };
@@ -537,6 +551,68 @@ function AssetTypes() {
                 />
                 <p style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem' }}>
                   These guidelines will be used by the AI to check submissions
+                </p>
+              </div>
+
+              {/* Pass Message Field - NEW */}
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{ 
+                  display: 'block', 
+                  fontWeight: '500', 
+                  marginBottom: '0.5rem',
+                  color: '#16a34a'
+                }}>
+                  Pass Message (shown when asset passes)
+                </label>
+                <textarea
+                  name="pass_message"
+                  value={formData.pass_message}
+                  onChange={handleInputChange}
+                  placeholder="Example: Congratulations! Please submit your asset to assets@nimbus.com"
+                  rows="3"
+                  style={{
+                    width: '100%',
+                    padding: '0.5rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '4px',
+                    fontSize: '1rem',
+                    fontFamily: 'inherit',
+                    resize: 'vertical'
+                  }}
+                />
+                <p style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                  Include submission instructions, email addresses, or next steps for compliant assets.
+                </p>
+              </div>
+
+              {/* Fail Message Field - NEW */}
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{ 
+                  display: 'block', 
+                  fontWeight: '500', 
+                  marginBottom: '0.5rem',
+                  color: '#dc2626'
+                }}>
+                  Fail Message (shown when asset fails)
+                </label>
+                <textarea
+                  name="fail_message"
+                  value={formData.fail_message}
+                  onChange={handleInputChange}
+                  placeholder="Example: Please correct the violations listed above and resubmit, or contact sponsorhelp@nimbus.com for assistance."
+                  rows="3"
+                  style={{
+                    width: '100%',
+                    padding: '0.5rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '4px',
+                    fontSize: '1rem',
+                    fontFamily: 'inherit',
+                    resize: 'vertical'
+                  }}
+                />
+                <p style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                  Include instructions for fixing issues and contact information for help.
                 </p>
               </div>
 

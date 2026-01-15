@@ -4,7 +4,7 @@
 
 **Business Model:** $5K-8K setup + $300-500/month per client  
 **Target Revenue:** $300K-400K/year with 25-30 clients  
-**Founder:** Sean Higgins (AWS Partner Marketing Contractor, building lifestyle business)
+**Founder:** Sean Higgins (AWS Partner Marketing Contractor)
 
 ---
 
@@ -14,13 +14,14 @@ Organizations deploy custom AI "gatekeepers" that sit between submitters and rev
 - Submitters upload assets (logos, banners, social, print)
 - AI instantly checks against client-specific brand guidelines
 - **NEW:** AI learns from reference images uploaded by admins
+- **NEW:** Custom pass/fail messages guide submitters to next steps
 - Submitters fix issues before formal submission
 - Reviewers only see compliant assets
 - **Result:** Eliminate 70%+ of back-and-forth revision cycles
 
 ---
 
-## ✅ Current State (Phase 2 COMPLETE + Security Hardened - December 2025)
+## ✅ Current State (Phase 2 COMPLETE + Custom Messages - January 2026)
 
 ### What's Built & Working:
 
@@ -56,6 +57,14 @@ Organizations deploy custom AI "gatekeepers" that sit between submitters and rev
   - Loading states
   - Color-coded badges
   - Responsive design
+
+**Custom Messages Feature (COMPLETE - January 15, 2026):**
+- ✅ **Pass/Fail Messages** - Customizable next-step instructions
+  - Optional pass message field per asset type
+  - Optional fail message field per asset type
+  - Displayed to submitters after AI analysis
+  - Email addresses automatically converted to clickable links
+  - Styled with appropriate colors (green for pass, red for fail)
 
 **Security Hardening (COMPLETE - December 30, 2025):**
 - ✅ **Private Storage Bucket** - Assets bucket secured
@@ -118,13 +127,14 @@ Organizations deploy custom AI "gatekeepers" that sit between submitters and rev
 │       ├── App.css               # Global styles
 │       ├── index.js              # React entry point
 │       ├── SubmitterInterface.jsx # Public upload interface (/)
+│       │
 │       └── components/
-│           └── Admin/
-│               ├── Login.jsx     # Admin login
-│               ├── Dashboard.jsx # Admin shell with tabs
-│               ├── AssetTypes.jsx # Asset management (with reference images)
-│               ├── Submissions.jsx # History view
-│               └── Settings.jsx  # Ghost mode toggle
+│           └── Admin/                      # Admin dashboard components
+│               ├── Login.jsx               # Admin login
+│               ├── Dashboard.jsx           # Admin shell with tabs
+│               ├── AssetTypes.jsx          # Asset management (with reference images + custom messages)
+│               ├── Submissions.jsx         # History view
+│               └── Settings.jsx            # Ghost mode toggle
 │
 ├── uploads/                      # Temporary file uploads (auto-created)
 └── node_modules/                 # Dependencies (not in git)
@@ -136,7 +146,7 @@ Organizations deploy custom AI "gatekeepers" that sit between submitters and rev
 
 ### Table 1: `asset_types`
 
-**Purpose:** Store compliance guidelines and reference images for each asset category
+**Purpose:** Store compliance guidelines, reference images, and custom messages for each asset category
 
 **Schema:**
 ```sql
@@ -146,6 +156,8 @@ CREATE TABLE asset_types (
   description text,                -- "Brand logos and marks"
   guidelines text,                 -- Full markdown guidelines (no size limit)
   reference_images jsonb,          -- Array of reference image objects
+  pass_message text,               -- NEW: Message shown when asset passes
+  fail_message text,               -- NEW: Message shown when asset fails
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now()
 );
@@ -288,6 +300,8 @@ Admins can create/edit/delete asset types through the admin dashboard. Each asse
 - **Description** (brief explanation)
 - **Guidelines** (detailed markdown compliance rules)
 - **Reference Images** (optional visual examples)
+- **Pass Message** (optional instructions shown when asset passes)
+- **Fail Message** (optional instructions shown when asset fails)
 
 Asset types load dynamically on the submitter interface - no hardcoding!
 
@@ -309,7 +323,26 @@ Asset types load dynamically on the submitter interface - no hardcoding!
 - Layout/composition references
 - Typography examples
 
-### 3. Ghost Mode
+### 3. Custom Pass/Fail Messages
+
+**Purpose:** Provide submitters with specific next steps based on compliance results
+
+**How it works:**
+1. Admin adds optional pass/fail messages when creating/editing asset types
+2. Messages stored in database (`pass_message` and `fail_message` columns)
+3. Backend includes appropriate message in API response
+4. Submitter sees styled message box after AI analysis
+5. Email addresses in messages automatically converted to clickable `mailto:` links
+6. Pass messages display with green styling, fail messages with red styling
+
+**Use cases:**
+- **Pass messages:** "Congratulations! Please submit to assets@nimbus.com"
+- **Fail messages:** "Please correct violations and resubmit, or contact sponsorhelp@nimbus.com"
+- Submission instructions (where to send approved assets)
+- Contact information (who to reach out to for help)
+- Links to resources (brand guidelines, templates, etc.)
+
+### 4. Ghost Mode
 
 **Purpose:** Validate AI accuracy during client onboarding without affecting submitters
 
@@ -324,7 +357,7 @@ Asset types load dynamically on the submitter interface - no hardcoding!
 
 **Why it's important:** Builds client trust before going live
 
-### 4. Submissions History
+### 5. Submissions History
 
 View and filter all past submissions:
 - **Filter by asset type:** Logo, Banner, etc.
@@ -354,6 +387,12 @@ View and filter all past submissions:
 - Submissions History with filtering
 - Ghost Mode for onboarding validation
 - UI polish and professional design
+
+### ✅ Custom Messages (COMPLETE - January 15, 2026)
+- Pass/fail message fields in Asset Types
+- Backend integration
+- Submitter interface display with styling
+- Email link auto-detection
 
 ### 🚧 Phase 3: Production Readiness (Before First Pilot)
 **CRITICAL SECURITY (COMPLETED Dec 30, 2025):**
@@ -389,7 +428,7 @@ View and filter all past submissions:
 
 ---
 
-## 🔐 Security Notes
+## 🔒 Security Notes
 
 ### Current Security Status:
 
@@ -492,7 +531,7 @@ View and filter all past submissions:
 ## 📝 Development Notes
 
 ### How to Start New Claude Conversation:
-1. Upload this README.md + ai-compliance-checker-system-architecture-v3.md
+1. Upload this README.md + ai-compliance-checker-system-architecture-v4.md
 2. Say: "I'm continuing work on the AI Compliance Checker. Please read the README to understand the current state."
 3. Specify what you want to build next
 
@@ -507,6 +546,8 @@ View and filter all past submissions:
 - [ ] Admin login works
 - [ ] File upload works
 - [ ] AI returns results (with reference images if uploaded)
+- [ ] Custom messages display correctly
+- [ ] Email links are clickable
 - [ ] Asset Types CRUD works
 - [ ] Submissions history shows data
 - [ ] Ghost mode toggles correctly
@@ -529,6 +570,6 @@ View and filter all past submissions:
 
 ---
 
-**Last Updated:** December 30, 2025  
-**Version:** 2.1 - Phase 2 Complete + Security Hardened  
-**Project Status:** Production-Ready MVP with Secure Storage (Ready for shadow audits)
+**Last Updated:** January 15, 2026  
+**Version:** 2.2 - Phase 2 Complete + Custom Messages Feature  
+**Project Status:** Production-Ready MVP with Secure Storage + Custom Pass/Fail Messages (Ready for shadow audits)

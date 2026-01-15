@@ -121,10 +121,10 @@ app.post('/api/review', upload.single('file'), async (req, res) => {
     console.log(`   File: ${req.file.originalname}`);
     console.log(`   Size: ${(req.file.size / 1024).toFixed(2)} KB`);
 
-    // Get guidelines AND reference images for this asset type from Supabase
+    // Get guidelines, reference images, AND custom messages for this asset type from Supabase
     const { data: assetTypeData, error: assetTypeError } = await supabase
       .from('asset_types')
-      .select('guidelines, reference_images')
+      .select('guidelines, reference_images, pass_message, fail_message')
       .eq('name', assetType)
       .single();
 
@@ -135,6 +135,8 @@ app.post('/api/review', upload.single('file'), async (req, res) => {
 
     const guidelines = assetTypeData.guidelines || 'No specific guidelines provided.';
     const referenceImages = assetTypeData.reference_images || [];
+    const passMessage = assetTypeData.pass_message || '';
+    const failMessage = assetTypeData.fail_message || '';
     
     console.log(`   Guidelines loaded: ${guidelines.substring(0, 100)}...`);
     console.log(`   Reference images found: ${referenceImages.length}`);
@@ -341,14 +343,15 @@ Respond in this exact JSON format:
         message: 'Submission received and is under review.'
       });
     } else {
-      // Normal mode: Show AI results
+      // Normal mode: Show AI results with custom message
       res.json({
         ghostMode: false,
         result: {
           pass: result.passed,
           confidence: result.confidence,
           violations: result.violations,
-          summary: result.summary
+          summary: result.summary,
+          customMessage: result.passed ? passMessage : failMessage
         }
       });
     }

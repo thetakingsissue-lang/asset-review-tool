@@ -1,7 +1,7 @@
 # AI Compliance Checker - System Architecture v4
 
-**Version:** 4.1  
-**Last Updated:** December 30, 2025  
+**Version:** 4.2
+**Last Updated:** January 15, 2026  
 **Status:** Phase 2 Complete + Security Hardened - Production-Ready with Secure Storage
 
 ---
@@ -727,7 +727,87 @@ const messages = [
 
 ---
 
-## 5. Authentication & Access Control
+## 5. Custom Pass/Fail Messages Feature
+
+### Overview
+
+Asset types can now include custom messages that are displayed to submitters based on whether their asset passes or fails compliance checking. This allows organizations to provide specific next steps, submission instructions, or contact information tailored to each outcome.
+
+### How It Works
+
+**Admin Configuration:**
+1. Admin navigates to Asset Types tab
+2. Edits an asset type
+3. Fills in two optional message fields:
+   - **Pass Message:** Shown when asset passes (e.g., submission instructions, email to send asset to)
+   - **Fail Message:** Shown when asset fails (e.g., how to fix issues, who to contact for help)
+4. Messages are stored in the database and included in API responses
+
+**Submitter Experience:**
+- After AI analysis completes, submitter sees standard results (pass/fail, confidence, violations)
+- **Plus** a styled message box at the bottom with the appropriate custom message
+- Email addresses in messages are automatically converted to clickable `mailto:` links
+- Pass messages display with green styling, fail messages with red styling
+
+### Database Schema
+
+**asset_types table:**
+```sql
+ALTER TABLE asset_types 
+ADD COLUMN pass_message TEXT,
+ADD COLUMN fail_message TEXT;
+```
+
+### Implementation Details
+
+**Frontend (AssetTypes.jsx):**
+- Two new textarea fields in the add/edit modal
+- Pass message has green label, fail message has red label
+- Both fields include placeholder text with examples
+- Fields are optional (can be left blank)
+
+**Backend (server.js):**
+- Fetches `pass_message` and `fail_message` along with guidelines and reference images
+- Includes appropriate message in API response based on `result.passed`
+- Ghost mode still hides all results including custom messages
+
+**Submitter Interface (SubmitterInterface.jsx):**
+- New `renderMessageWithLinks()` helper function converts email addresses to links
+- Custom message displays in a styled box with icon
+- Different styling for pass (green background) vs fail (red background)
+- Responsive design matches existing interface
+
+### Use Cases
+
+**Pass Messages:**
+- "Congratulations! Please submit your asset to assets@nimbus.com"
+- "Great work! Next, email your approved logo to marketing@company.com for final review"
+- "Your asset is compliant. Upload to our shared drive at [link]"
+
+**Fail Messages:**
+- "Please correct the violations above and resubmit, or contact sponsorhelp@company.com"
+- "Need help fixing these issues? Reach out to design@company.com"
+- "Review our brand guidelines at [link] and submit again when ready"
+
+### Testing Results
+
+✅ Tested with both pass and fail scenarios
+✅ Email addresses correctly converted to clickable links
+✅ Styling matches design system (green for pass, red for fail)
+✅ Messages save to database and persist across sessions
+✅ Ghost mode correctly hides custom messages
+
+### Future Enhancements
+
+- Rich text editing (bold, italic, links)
+- Variable substitution (e.g., {filename}, {asset_type}, {violations_count})
+- Message templates library
+- A/B testing different messages
+- Analytics on message click-through rates
+
+---
+
+## 6. Authentication & Access Control
 
 ### Current Implementation (MVP)
 

@@ -564,3 +564,59 @@
     padding: 1.5rem;
   }
 }
+
+/* Custom Message Styles */
+.custom-message {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 8px;
+  line-height: 1.6;
+  font-size: 14px;
+}
+
+.custom-message-pass {
+  background-color: #f0fdf4;
+  border-left: 4px solid #16a34a;
+  color: #166534;
+}
+
+.custom-message-fail {
+  background-color: #fef2f2;
+  border-left: 4px solid #dc2626;
+  color: #991b1b;
+}
+
+.custom-message-icon {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
+}
+
+.custom-message-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.custom-message-pass .custom-message-icon {
+  color: #16a34a;
+}
+
+.custom-message-fail .custom-message-icon {
+  color: #dc2626;
+}
+
+.custom-message-text {
+  flex: 1;
+}
+
+.custom-message-text a {
+  color: #2563eb;
+  text-decoration: underline;
+  font-weight: 500;
+}
+
+.custom-message-text a:hover {
+  color: #1d4ed8;
+}
