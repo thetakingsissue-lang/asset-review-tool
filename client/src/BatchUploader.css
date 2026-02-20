@@ -1,0 +1,761 @@
+/* BatchUploader - Mobile-first styles */
+
+/* Use existing variables from App.css */
+
+/* Base layout */
+.batch-app {
+  min-height: 100vh;
+  background-color: var(--gray-100);
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--black);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Header */
+.batch-header {
+  background: var(--white);
+  border-bottom: 1px solid var(--gray-200);
+  padding: 0.75rem 1rem;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.batch-header-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.batch-logo {
+  height: 28px;
+  width: auto;
+}
+
+.batch-header-badge {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--white);
+  background: var(--green);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+/* Main content */
+.batch-main {
+  padding: 1rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+@media (min-width: 768px) {
+  .batch-main {
+    padding: 1.5rem;
+  }
+}
+
+/* Controls section */
+.batch-controls {
+  background: var(--white);
+  border-radius: 12px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.batch-controls-row {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+@media (min-width: 600px) {
+  .batch-controls-row {
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: space-between;
+  }
+}
+
+.batch-field {
+  flex: 1;
+  max-width: 300px;
+}
+
+.batch-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--black);
+  margin-bottom: 0.5rem;
+}
+
+.batch-select {
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  font-size: 16px;
+  font-family: inherit;
+  border: 1px solid var(--gray-300);
+  border-radius: 8px;
+  background: var(--white);
+  color: var(--black);
+  cursor: pointer;
+}
+
+.batch-select:focus {
+  outline: none;
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px var(--green-light);
+}
+
+.batch-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+/* Buttons */
+.batch-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.batch-btn-primary {
+  background: var(--green);
+  color: var(--white);
+  border: none;
+}
+
+.batch-btn-primary:hover:not(:disabled) {
+  background: var(--green-dark);
+}
+
+.batch-btn-primary:disabled {
+  background: var(--gray-300);
+  cursor: not-allowed;
+}
+
+.batch-btn-secondary {
+  background: var(--white);
+  color: var(--gray-700);
+  border: 1px solid var(--gray-300);
+}
+
+.batch-btn-secondary:hover {
+  background: var(--gray-100);
+  border-color: var(--gray-500);
+}
+
+/* Progress bar */
+.batch-progress {
+  margin-top: 1rem;
+  height: 6px;
+  background: var(--gray-200);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.batch-progress-bar {
+  height: 100%;
+  background: var(--green);
+  transition: width 0.3s ease;
+}
+
+/* Status summary */
+.batch-summary {
+  margin-top: 1rem;
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.batch-summary-pass {
+  color: var(--green-dark);
+}
+
+.batch-summary-fail {
+  color: var(--red);
+}
+
+.batch-summary-error {
+  color: #b45309;
+}
+
+/* Error message */
+.batch-error {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: var(--red-light);
+  border-radius: 8px;
+  color: var(--red);
+  font-size: 14px;
+  margin-bottom: 1rem;
+}
+
+.batch-error svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.batch-error button {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--red);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+/* Upload zone */
+.batch-upload {
+  border: 2px dashed var(--gray-300);
+  border-radius: 12px;
+  padding: 2rem 1rem;
+  text-align: center;
+  transition: all 0.15s;
+  background: var(--white);
+  margin-bottom: 1rem;
+}
+
+.batch-upload:hover {
+  border-color: var(--gray-500);
+  background: var(--gray-100);
+}
+
+.batch-upload-active {
+  border-color: var(--green);
+  background: var(--green-light);
+}
+
+.batch-upload-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.batch-upload-icon {
+  width: 40px;
+  height: 40px;
+  color: var(--gray-500);
+}
+
+.batch-upload-text {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  font-size: 14px;
+  color: var(--gray-500);
+}
+
+.batch-upload-button {
+  color: var(--green);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.batch-upload-button:hover {
+  text-decoration: underline;
+}
+
+.batch-upload-hint {
+  font-size: 13px;
+  color: var(--gray-500);
+  margin: 0;
+}
+
+/* Thumbnail grid - mobile first */
+.batch-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+
+@media (min-width: 480px) {
+  .batch-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.75rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .batch-grid {
+    grid-template-columns: repeat(5, 1fr);
+    gap: 1rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .batch-grid {
+    grid-template-columns: repeat(6, 1fr);
+  }
+}
+
+/* Thumbnail item */
+.batch-thumb {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  background: var(--gray-200);
+}
+
+.batch-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.15s;
+}
+
+.batch-thumb:hover img {
+  transform: scale(1.05);
+}
+
+.batch-thumb:active {
+  transform: scale(0.98);
+}
+
+/* Remove button on thumbnail */
+.batch-thumb-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 24px;
+  height: 24px;
+  background: rgba(0, 0, 0, 0.6);
+  border: none;
+  border-radius: 50%;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.batch-thumb-remove svg {
+  width: 14px;
+  height: 14px;
+}
+
+.batch-thumb:hover .batch-thumb-remove {
+  opacity: 1;
+}
+
+/* Touch devices - always show remove */
+@media (hover: none) {
+  .batch-thumb-remove {
+    opacity: 1;
+  }
+}
+
+/* Status badges */
+.batch-badge {
+  position: absolute;
+  bottom: 4px;
+  left: 4px;
+  right: 4px;
+  padding: 0.25rem;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.batch-badge-pending {
+  background: rgba(0, 0, 0, 0.5);
+  color: white;
+}
+
+.batch-badge-processing {
+  background: rgba(30, 150, 92, 0.9);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.batch-badge-pass {
+  background: rgba(30, 150, 92, 0.95);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.batch-badge-pass svg {
+  width: 16px;
+  height: 16px;
+}
+
+.batch-badge-fail {
+  background: rgba(220, 38, 38, 0.95);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.batch-badge-fail svg {
+  width: 16px;
+  height: 16px;
+}
+
+.batch-badge-error {
+  background: rgba(180, 83, 9, 0.95);
+  color: white;
+}
+
+.batch-badge-submitted {
+  background: rgba(100, 100, 100, 0.9);
+  color: white;
+}
+
+/* Spinner */
+.batch-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid transparent;
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: batch-spin 0.8s linear infinite;
+}
+
+.batch-spinner-large {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--gray-200);
+  border-top-color: var(--green);
+  border-radius: 50%;
+  animation: batch-spin 0.8s linear infinite;
+}
+
+@keyframes batch-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Empty state */
+.batch-empty {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--gray-500);
+}
+
+.batch-empty svg {
+  width: 64px;
+  height: 64px;
+  color: var(--gray-300);
+  margin-bottom: 1rem;
+}
+
+.batch-empty h3 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--gray-700);
+  margin: 0 0 0.5rem 0;
+}
+
+.batch-empty p {
+  font-size: 14px;
+  margin: 0;
+}
+
+/* Modal overlay */
+.batch-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  animation: batch-fade-in 0.2s ease;
+}
+
+@keyframes batch-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Modal */
+.batch-modal {
+  background: var(--white);
+  border-radius: 12px;
+  max-width: 500px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  animation: batch-slide-up 0.2s ease;
+}
+
+@keyframes batch-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.batch-modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  background: rgba(0, 0, 0, 0.5);
+  border: none;
+  border-radius: 50%;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+}
+
+.batch-modal-close svg {
+  width: 20px;
+  height: 20px;
+}
+
+.batch-modal-image {
+  background: var(--gray-100);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  max-height: 300px;
+}
+
+.batch-modal-image img {
+  max-width: 100%;
+  max-height: 300px;
+  object-fit: contain;
+}
+
+.batch-modal-content {
+  padding: 1.25rem;
+}
+
+.batch-modal-filename {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--black);
+  margin: 0 0 0.25rem 0;
+  word-break: break-all;
+}
+
+.batch-modal-filesize {
+  font-size: 13px;
+  color: var(--gray-500);
+  margin: 0 0 1rem 0;
+}
+
+/* Modal status */
+.batch-modal-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 15px;
+  margin-bottom: 1rem;
+}
+
+.batch-modal-status.status-pass {
+  background: var(--green-light);
+  color: var(--green-dark);
+}
+
+.batch-modal-status.status-fail {
+  background: var(--red-light);
+  color: var(--red);
+}
+
+.batch-modal-status svg {
+  width: 20px;
+  height: 20px;
+}
+
+.batch-modal-confidence {
+  margin-left: auto;
+  font-weight: 500;
+  font-size: 14px;
+  opacity: 0.8;
+}
+
+/* Modal sections */
+.batch-modal-section {
+  margin-bottom: 1rem;
+}
+
+.batch-modal-section h4 {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--gray-500);
+  margin: 0 0 0.5rem 0;
+}
+
+.batch-modal-section p {
+  font-size: 14px;
+  color: var(--black);
+  margin: 0;
+  line-height: 1.6;
+}
+
+/* Violations list */
+.batch-modal-violations {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.batch-modal-violations li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 14px;
+  color: var(--black);
+  padding: 0.5rem 0.75rem;
+  background: var(--red-light);
+  border-radius: 6px;
+}
+
+.batch-modal-violations svg {
+  width: 16px;
+  height: 16px;
+  color: var(--red);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* Custom message */
+.batch-modal-custom {
+  padding: 0.875rem 1rem;
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1.6;
+  margin-top: 1rem;
+}
+
+.batch-modal-custom.custom-pass {
+  background: #f0fdf4;
+  border-left: 4px solid #16a34a;
+  color: #166534;
+}
+
+.batch-modal-custom.custom-fail {
+  background: #fef2f2;
+  border-left: 4px solid #dc2626;
+  color: #991b1b;
+}
+
+/* Error state */
+.batch-modal-error {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: var(--red-light);
+  border-radius: 8px;
+  color: var(--red);
+  font-size: 14px;
+  margin-top: 1rem;
+}
+
+.batch-modal-error svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+/* Ghost mode */
+.batch-modal-ghost {
+  background: var(--gray-100);
+  padding: 1rem;
+  border-radius: 8px;
+  margin-top: 1rem;
+}
+
+.batch-modal-ghost p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--gray-700);
+}
+
+/* Pending/Processing states */
+.batch-modal-pending {
+  color: var(--gray-500);
+  font-size: 14px;
+  margin: 1rem 0 0;
+}
+
+.batch-modal-processing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  margin-top: 1rem;
+}
+
+.batch-modal-processing p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--gray-500);
+}
+
+/* sr-only for hidden inputs */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

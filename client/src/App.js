@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import SubmitterInterface from './SubmitterInterface';
+import BatchUploader from './BatchUploader';
 import Login from './components/Admin/Login';
 import Dashboard from './components/Admin/Dashboard';
 
@@ -13,6 +14,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<SubmitterInterface />} />
+        <Route path="/batch" element={<BatchUploader />} />
         <Route path="/admin/login" element={<Login />} />
         <Route path="/admin" element={<AdminRoute />} />
       </Routes>
