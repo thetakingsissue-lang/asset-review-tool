@@ -1,8 +1,9 @@
 # AI Compliance Checker
 
-> An AI-powered asset review tool that helps organizations (events, franchises) check sponsor/franchisee submissions against brand guidelines.
+> An AI-powered asset review tool that helps organizations (events, franchises, property management) check submissions against brand and quality guidelines — before they reach human reviewers.
 
-**Business Model:** $5K-8K setup + $300-500/month per client  
+**Business Name:** SubmitClear  
+**Business Model:** $5K-25K setup + $300-2,500/month per client  
 **Target Revenue:** $300K-400K/year with 25-30 clients  
 **Founder:** Sean Higgins (AWS Partner Marketing Contractor)
 
@@ -11,17 +12,19 @@
 ## 🎯 What It Does
 
 Organizations deploy custom AI "gatekeepers" that sit between submitters and reviewers:
-- Submitters upload assets (logos, banners, social, print)
-- AI instantly checks against client-specific brand guidelines
-- **NEW:** AI learns from reference images uploaded by admins
-- **NEW:** Custom pass/fail messages guide submitters to next steps
+- Submitters upload assets (logos, banners, social, print, property photos)
+- AI instantly checks against client-specific guidelines
+- AI learns from reference images uploaded by admins
+- Custom pass/fail messages guide submitters to next steps
 - Submitters fix issues before formal submission
 - Reviewers only see compliant assets
 - **Result:** Eliminate 70%+ of back-and-forth revision cycles
 
+**NEW USE CASE — Property Photo Quality:** Property managers submit listing photos via mobile batch upload. AI screens for orientation, lighting, clutter, and staging issues before photos go live on listing sites.
+
 ---
 
-## ✅ Current State (Phase 2 COMPLETE + Custom Messages - January 2026)
+## ✅ Current State (Phase 2 COMPLETE + Batch Upload - February 2026)
 
 ### What's Built & Working:
 
@@ -53,43 +56,46 @@ Organizations deploy custom AI "gatekeepers" that sit between submitters and rev
   - AI analyzes but hides results from submitters
   - Validates accuracy before going live
 - ✅ **UI Polish** - Professional interface
-  - Success/error messaging
-  - Loading states
-  - Color-coded badges
-  - Responsive design
 
 **Custom Messages Feature (COMPLETE - January 15, 2026):**
-- ✅ **Pass/Fail Messages** - Customizable next-step instructions
-  - Optional pass message field per asset type
-  - Optional fail message field per asset type
-  - Displayed to submitters after AI analysis
-  - Email addresses automatically converted to clickable links
-  - Styled with appropriate colors (green for pass, red for fail)
+- ✅ Optional pass/fail message fields per asset type
+- ✅ Displayed to submitters after AI analysis
+- ✅ Email addresses automatically converted to clickable links
+- ✅ Styled with appropriate colors (green for pass, red for fail)
 
 **Security Hardening (COMPLETE - December 30, 2025):**
-- ✅ **Private Storage Bucket** - Assets bucket secured
-  - Public access disabled
-  - Files no longer accessible via public URLs
-- ✅ **Signed URLs Implemented** - 1-hour expiration
-  - Backend generates temporary signed URLs
-  - Uploaded files use signed URLs
-  - Reference images use signed URLs
-- ✅ **Tested and Working** - All flows verified
-  - File uploads work
-  - Reference images load correctly
-  - Admin dashboard displays images
-  - AI analysis functions normally
+- ✅ Private storage bucket (public access disabled)
+- ✅ Signed URLs with 1-hour expiration
+- ✅ All upload/download flows tested and working
+
+**Batch Photo Upload (COMPLETE - February 20, 2026):**
+- ✅ **New interface at `/batch`** — original single-file tool unchanged at `/`
+- ✅ Upload up to 30 photos at once via click or drag-and-drop
+- ✅ Throttled parallel processing (5 concurrent requests) — avoids timeouts
+- ✅ Results stream in as photos complete (real-time feedback)
+- ✅ Thumbnail grid with green checkmark / red X overlays
+- ✅ Tap-to-expand modal showing full violation details per photo
+- ✅ Summary count (passed/failed) after batch completes
+- ✅ Mobile-first responsive CSS (3-column grid on mobile, 6 on desktop)
+- ✅ "Clear All" and "Resubmit Failed Photos" actions
+- ✅ Built for property management use case (tested with Sun Communities photos)
+
+**Property Photo Guidelines (COMPLETE - February 20, 2026):**
+- ✅ "Property Photos" asset type configured in admin
+- ✅ Calibrated for real-world property manager iPhone photography (not professional shoots)
+- ✅ Hard fails: vertical orientation, extremely dark, visible clutter/mess, toilet lid up, people/pets in frame
+- ✅ Lenient on: slight darkness, throw pillows/decor, minor framing imperfections, small counter items
+
+---
 
 ### What's NOT Built Yet:
 
-**Phase 3 (Planned - After First Pilots):**
-- Magic link authentication for submitters
-- Reviewer feedback loop with status workflow
-- Email notifications
-- One-click learning from AI mistakes
-- PDF guideline upload and parsing
-- Multi-tenant client isolation (client_id filtering)
-- Submission gating with custom pass/fail messages
+**Phase 3 (Planned - Before First Pilots):**
+- [ ] Magic link authentication for submitters
+- [ ] Reviewer feedback loop with status workflow
+- [ ] Email notifications
+- [ ] One-click learning from AI mistakes
+- [ ] Multi-tenant client isolation (client_id filtering)
 
 ---
 
@@ -123,16 +129,18 @@ Organizations deploy custom AI "gatekeepers" that sit between submitters and rev
 │   ├── package.json
 │   ├── public/
 │   └── src/
-│       ├── App.js                # Main router
+│       ├── App.js                # Main router (/ and /batch routes)
 │       ├── App.css               # Global styles
 │       ├── index.js              # React entry point
-│       ├── SubmitterInterface.jsx # Public upload interface (/)
+│       ├── SubmitterInterface.jsx # Single-file upload interface (/)
+│       ├── BatchUploader.jsx      # NEW: Batch photo upload interface (/batch)
+│       ├── BatchUploader.css      # NEW: Mobile-first batch uploader styles
 │       │
 │       └── components/
 │           └── Admin/                      # Admin dashboard components
 │               ├── Login.jsx               # Admin login
 │               ├── Dashboard.jsx           # Admin shell with tabs
-│               ├── AssetTypes.jsx          # Asset management (with reference images + custom messages)
+│               ├── AssetTypes.jsx          # Asset management (guidelines + reference images + custom messages)
 │               ├── Submissions.jsx         # History view
 │               └── Settings.jsx            # Ghost mode toggle
 │
@@ -146,48 +154,31 @@ Organizations deploy custom AI "gatekeepers" that sit between submitters and rev
 
 ### Table 1: `asset_types`
 
-**Purpose:** Store compliance guidelines, reference images, and custom messages for each asset category
-
-**Schema:**
 ```sql
 CREATE TABLE asset_types (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  name text NOT NULL,              -- "logo", "banner", "social", "print"
-  description text,                -- "Brand logos and marks"
-  guidelines text,                 -- Full markdown guidelines (no size limit)
-  reference_images jsonb,          -- Array of reference image objects
-  pass_message text,               -- NEW: Message shown when asset passes
-  fail_message text,               -- NEW: Message shown when asset fails
+  name text NOT NULL,
+  description text,
+  guidelines text,
+  reference_images jsonb,
+  pass_message text,
+  fail_message text,
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now()
 );
 ```
 
-**Reference Images Format:**
-```json
-[
-  {
-    "url": "https://supabase.co/.../reference-images/logo/1234-abc.png",
-    "fileName": "apple-logo.png",
-    "storagePath": "reference-images/logo/1234-abc.png"
-  }
-]
-```
-
 ### Table 2: `submissions`
 
-**Purpose:** Track every asset upload and AI analysis result
-
-**Schema:**
 ```sql
 CREATE TABLE submissions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   asset_type text NOT NULL,
   file_name text NOT NULL,
   file_url text NOT NULL,
-  result text NOT NULL,            -- 'pass' or 'fail'
-  confidence_score integer,        -- 0-100
-  violations jsonb,                -- Array of violation strings
+  result text NOT NULL,
+  confidence_score integer,
+  violations jsonb,
   submitted_at timestamptz DEFAULT now(),
   created_at timestamptz DEFAULT now()
 );
@@ -195,9 +186,6 @@ CREATE TABLE submissions (
 
 ### Table 3: `app_settings`
 
-**Purpose:** Global application configuration (ghost mode, etc.)
-
-**Schema:**
 ```sql
 CREATE TABLE app_settings (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -210,256 +198,136 @@ CREATE TABLE app_settings (
 
 ### Storage Bucket: `assets`
 
-**Purpose:** Store uploaded asset files and reference images
-
-**Configuration:**
 - **Bucket name:** `assets`
-- **Public access:** ❌ DISABLED (Private bucket)
-- **Access method:** Signed URLs with 1-hour expiration
-- **Folder structure:** 
-  - `submissions/[timestamp]-[random].[ext]` - Submitted assets
-  - `reference-images/[asset-type]/[timestamp]-[random].[ext]` - Reference images
-
-✅ **Security Status (Updated December 27, 2024):**
-1. ✅ Bucket is private
-2. ✅ Signed URLs implemented (1-hour expiration)
-3. ✅ server.js generates signed URLs using `createSignedUrl()`
-4. ✅ Tested and working for uploads, downloads, and reference images
+- **Public access:** ❌ DISABLED (Private)
+- **Access method:** Signed URLs, 1-hour expiration
+- **Folders:** `submissions/` and `reference-images/[asset-type]/`
 
 ---
 
 ## 🔧 Environment Variables
 
-**Root `.env` file:**
+**Root `.env`:**
 ```env
-# OpenAI API Key
 OPENAI_API_KEY=sk-proj-...
-
-# Supabase Backend Credentials
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_KEY=your_service_key_here
 ```
 
-**Client `.env` file:**
+**Client `.env`:**
 ```env
-# Admin Dashboard Password
 REACT_APP_ADMIN_PASSWORD=your_password_here
-
-# Supabase Frontend Credentials
 REACT_APP_SUPABASE_URL=https://your-project.supabase.co
 REACT_APP_SUPABASE_ANON_KEY=your_anon_key_here
 ```
-
-⚠️ **IMPORTANT:** React requires `.env` file in `client/` folder, NOT in root.
 
 ---
 
 ## 🚀 How to Run
 
-### Prerequisites:
-- Node.js 18+ installed
-- npm installed
-- Supabase account with project created
-- OpenAI API key
-
-### Setup:
-
+**Terminal 1 — Backend:**
 ```bash
-# 1. Navigate to project
-cd ~/Downloads/asset-review-tool-main-3/
-
-# 2. Install dependencies
-npm install
-cd client && npm install && cd ..
-
-# 3. Create environment files
-cp .env.example .env
-# Edit .env and add your API keys
-
-cp client/.env.example client/.env
-# Edit client/.env and add your keys
-
-# 4. Start development servers (both backend and frontend)
-npm run dev
+cd ~/Downloads/asset-review-tool-main-3
+node server.js
 ```
 
-**What happens:**
-- Backend starts on `http://localhost:3001`
-- React frontend starts on `http://localhost:3000`
-- Visit `http://localhost:3000` for submitter interface
-- Visit `http://localhost:3000/admin` for admin dashboard
+**Terminal 2 — Frontend:**
+```bash
+cd ~/Downloads/asset-review-tool-main-3/client
+npm start
+```
+
+**URLs:**
+- `http://localhost:3000/` — Single-file submitter interface
+- `http://localhost:3000/batch` — Batch photo upload interface (NEW)
+- `http://localhost:3000/admin` — Admin dashboard
 
 ---
 
-## 🎨 Key Features Explained
+## 🎯 Target Markets
 
-### 1. Dynamic Asset Types
+**Primary — Event Operations Teams:**
+- Setup: $5K-8K | Monthly: $300-500
+- Pain: Sponsor asset review cycles, 30-40% rejection rates
 
-Admins can create/edit/delete asset types through the admin dashboard. Each asset type has:
-- **Name** (e.g., "Logo", "Banner")
-- **Description** (brief explanation)
-- **Guidelines** (detailed markdown compliance rules)
-- **Reference Images** (optional visual examples)
-- **Pass Message** (optional instructions shown when asset passes)
-- **Fail Message** (optional instructions shown when asset fails)
+**Secondary — Franchise Systems:**
+- Setup: $15K-25K | Monthly: $1K-2.5K
+- Pain: Franchisee marketing compliance at scale
 
-Asset types load dynamically on the submitter interface - no hardcoding!
-
-### 2. Reference Images (AI Visual Learning)
-
-**How it works:**
-1. Admin uploads 1+ reference images per asset type
-2. Images stored in Supabase Storage at `reference-images/{asset-type}/`
-3. When submission is analyzed:
-   - Backend fetches reference images from database
-   - Downloads and converts to base64
-   - Includes in OpenAI API call BEFORE submission image
-   - AI compares submission against references
-4. Dramatically improves accuracy for logo recognition and visual compliance
-
-**Use cases:**
-- Specific logo matching (e.g., "must use THIS Apple logo")
-- Color palette examples
-- Layout/composition references
-- Typography examples
-
-### 3. Custom Pass/Fail Messages
-
-**Purpose:** Provide submitters with specific next steps based on compliance results
-
-**How it works:**
-1. Admin adds optional pass/fail messages when creating/editing asset types
-2. Messages stored in database (`pass_message` and `fail_message` columns)
-3. Backend includes appropriate message in API response
-4. Submitter sees styled message box after AI analysis
-5. Email addresses in messages automatically converted to clickable `mailto:` links
-6. Pass messages display with green styling, fail messages with red styling
-
-**Use cases:**
-- **Pass messages:** "Congratulations! Please submit to assets@nimbus.com"
-- **Fail messages:** "Please correct violations and resubmit, or contact sponsorhelp@nimbus.com"
-- Submission instructions (where to send approved assets)
-- Contact information (who to reach out to for help)
-- Links to resources (brand guidelines, templates, etc.)
-
-### 4. Ghost Mode
-
-**Purpose:** Validate AI accuracy during client onboarding without affecting submitters
-
-**How it works:**
-1. Admin enables ghost mode in Settings tab
-2. Submitters upload normally
-3. AI analyzes in background
-4. Submitters see generic "Submitted" message (no pass/fail)
-5. Admins see full AI analysis in Submissions tab
-6. Admin compares AI decisions to their own judgment
-7. Once 85%+ accuracy confirmed, disable ghost mode
-
-**Why it's important:** Builds client trust before going live
-
-### 5. Submissions History
-
-View and filter all past submissions:
-- **Filter by asset type:** Logo, Banner, etc.
-- **Filter by result:** Pass, Fail, All
-- **Filter by date:** Today, Last 7 Days, Last 30 Days, All Time
-- **Detail modal:** Click "View Details" to see full image, violations, download link
+**Emerging — Property Management:**
+- Setup: $5K-15K | Monthly: $300-1,500
+- Pain: Property managers submitting low-quality listing photos
+- Validated by Rob Burns (Sun Communities) discovery call, Feb 2026
+- Batch upload interface built and tested for this use case
 
 ---
 
 ## 📋 Phase Roadmap
 
 ### ✅ Phase 0: Foundation (COMPLETE)
-- Business formation (LLC, EIN, bank account)
-- Domain purchased
-- Project initialized
+- LLC, EIN, bank account, domain
 
 ### ✅ Phase 1: Basic MVP (COMPLETE)
-- Submitter upload interface
-- OpenAI GPT-4o integration
-- Pass/fail results display
-- Admin shell (login, routing, tabs)
-- Supabase setup and connection
+- Submitter upload, OpenAI integration, pass/fail results, admin shell, Supabase
 
-### ✅ Phase 2: Admin Features (COMPLETE - December 18, 2025)
-- Asset Type Management with CRUD interface
-- Reference Images upload and AI integration
-- Submissions History with filtering
-- Ghost Mode for onboarding validation
-- UI polish and professional design
+### ✅ Phase 2: Admin Features (COMPLETE - December 2025)
+- Asset Type Management, Reference Images, Submissions History, Ghost Mode
 
-### ✅ Custom Messages (COMPLETE - January 15, 2026)
-- Pass/fail message fields in Asset Types
-- Backend integration
-- Submitter interface display with styling
-- Email link auto-detection
+### ✅ Custom Messages (COMPLETE - January 2026)
+- Per-asset-type pass/fail messages with email link detection
 
-### 🚧 Phase 3: Production Readiness (Before First Pilot)
-**CRITICAL SECURITY (COMPLETED Dec 30, 2025):**
-- [x] Switch storage bucket to private
-- [x] Implement signed URLs (1-hour expiration)
-- [x] Test upload/download still works
+### ✅ Security Hardening (COMPLETE - December 2025)
+- Private bucket, signed URLs
 
-**AUTHENTICATION:**
+### ✅ Batch Photo Upload (COMPLETE - February 2026)
+- Mobile-first batch interface at /batch
+- Throttled parallel processing
+- Property photo guidelines calibrated
+
+### 🚧 Phase 3: Production Readiness (Before First Pilots)
 - [ ] Magic link authentication for submitters
-- [ ] Individual admin accounts (email/password)
-- [ ] Session management with expiration
-
-**SUBMISSION WORKFLOW:**
-- [ ] Status system (READY_FOR_REVIEW, APPROVED, REJECTED, etc.)
-- [ ] Reviewer feedback form
+- [ ] Individual admin accounts
+- [ ] Status workflow (READY_FOR_REVIEW, APPROVED, REJECTED, etc.)
 - [ ] Email notifications
-- [ ] Resubmission linking
-
-**MULTI-TENANT:**
-- [ ] Add `client_id` column to all tables
-- [ ] Update RLS policies for per-client isolation
-- [ ] Test data isolation thoroughly
+- [ ] Multi-tenant client_id isolation
 
 ### ⏳ Phase 4: Advanced Features (After 3-5 Pilots)
 - One-click learning from AI mistakes
-- PDF guideline upload and parsing
+- PDF guideline upload
 - Video/PPTX/DOCX support
-- Submission gating with custom messages
 - Auto-approve mode
 - Webhook integrations
 - Visual violation highlighting
-- Analytics dashboard
 
 ---
 
 ## 🔒 Security Notes
 
-### Current Security Status:
-
 **✅ Implemented:**
 - Password-protected admin access
-- Environment variables for secrets
-- Row-Level Security (RLS) enabled on tables
-- File type validation
-- File size limits (10MB)
-
-**✅ COMPLETED (December 30, 2025):**
-1. **Storage Security:**
-   - ✅ `assets` bucket is private
-   - ✅ Signed URLs with 1-hour expiration implemented
-   - ✅ Public access to files prevented
+- Environment variables for all secrets
+- RLS enabled on Supabase tables
+- File type validation + 10MB size limit
+- Private storage bucket with signed URLs (1-hour expiration)
 
 **⚠️ TODO Before Production:**
+- Replace shared password with individual accounts
+- Add magic links for submitters
+- Add client_id filtering for multi-tenant isolation
+- Rate limiting on upload endpoint
 
-1. **Authentication:**
-   - Replace single password with individual accounts
-   - Add magic links for submitters
-   - Implement session expiration (30 days)
+---
 
-2. **Multi-Tenant Isolation:**
-   - Add `client_id` filtering to all queries
-   - Update RLS policies to enforce per-client access
-   - Test that Client A cannot see Client B's data
+## 🐛 Known Issues & Limitations
 
-3. **Rate Limiting:**
-   - Prevent abuse of upload endpoint
-   - Limit submissions per IP/user
+1. File formats: PNG, JPG, GIF, WebP only (no PDF, video, PPTX yet)
+2. Signed URLs expire after 1 hour (by design)
+3. Single shared admin password
+4. No submitter accounts
+5. No email notifications
+6. No submission workflow (just pass/fail)
+7. Single deployment (all test data in one database)
+8. No pagination on submissions (could slow with 1,000+ records)
 
 ---
 
@@ -467,7 +335,7 @@ View and filter all past submissions:
 
 **Technical:**
 - AI accuracy: 85%+ (measured in Ghost Mode)
-- Response time: <5 seconds per asset check
+- Response time: <5 seconds per asset
 - Uptime: 99%+
 
 **Business:**
@@ -478,76 +346,26 @@ View and filter all past submissions:
 
 ---
 
-## 🐛 Known Issues & Limitations
-
-### Current Limitations:
-
-1. **File formats:** Only PNG, JPG, GIF, WebP (no PDF, video, PPTX yet)
-2. **Signed URL expiration:** URLs expire after 1 hour (expected behavior - enhances security)
-3. **Authentication:** Single shared admin password
-4. **No submitter accounts:** Anyone can upload
-5. **No email notifications:** No automated communication
-6. **No submission workflow:** Just pass/fail, no approval process
-7. **Single deployment:** All test data in one database
-
-### Known Bugs:
-
-- "Download File" opens in new tab instead of downloading (expected behavior for images)
-- Admin session persists indefinitely (no expiration)
-- No pagination on submissions (could be slow with 1,000+ records)
-
----
-
-## 🎯 TODO Before First Pilot
-
-### Must-Do (Security):
-- [x] Make storage bucket private + signed URLs (COMPLETED Dec 30, 2025)
-- [x] Test all upload/download flows still work (COMPLETED Dec 30, 2025)
-- [ ] Add client_id filtering for multi-tenant isolation
-
-### Should-Do (Functionality):
-- [ ] Create 3-4 comprehensive guideline examples
-- [ ] Test AI accuracy with 20-30 sample assets
-- [ ] Refine prompts based on test results
-- [ ] Add better error messages
-- [ ] Create client onboarding checklist
-
-### Nice-to-Have (Polish):
-- [ ] Loading indicators with estimated time
-- [ ] Success animations
-- [ ] Better mobile responsive design
-- [ ] Print-friendly submission reports
-
----
-
-## 📞 Support & Contact
-
-**Founder:** Sean Higgins  
-**GitHub:** https://github.com/thetakingsissue-lang/asset-review-tool  
-**Supabase Project:** ai-compliance-checker
-
----
-
 ## 📝 Development Notes
 
-### How to Start New Claude Conversation:
-1. Upload this README.md + ai-compliance-checker-system-architecture-v4.md
-2. Say: "I'm continuing work on the AI Compliance Checker. Please read the README to understand the current state."
-3. Specify what you want to build next
+### How to Start a New Claude Conversation:
+1. Upload `README.md` + `ai-compliance-checker-system-architecture-v4.md`
+2. Say: "I'm continuing work on SubmitClear. Please read the README to understand current state."
+3. Specify what you want to work on next
 
 ### Before Committing to Git:
-- ✅ Make sure `.env` is in `.gitignore`
-- ✅ Test `npm run dev` works
-- ✅ Check no API keys are in code
+- ✅ Confirm `.env` is in `.gitignore`
+- ✅ Test both `/` and `/batch` interfaces work
+- ✅ No API keys in code
 - ✅ Update README with new features
 
 ### Testing Checklist:
-- [ ] Submitter interface loads
-- [ ] Admin login works
-- [ ] File upload works
-- [ ] AI returns results (with reference images if uploaded)
+- [ ] Single-file interface loads at `/`
+- [ ] Batch interface loads at `/batch`
+- [ ] Admin login works at `/admin`
+- [ ] File upload works (single and batch)
+- [ ] AI returns results
 - [ ] Custom messages display correctly
-- [ ] Email links are clickable
 - [ ] Asset Types CRUD works
 - [ ] Submissions history shows data
 - [ ] Ghost mode toggles correctly
@@ -557,19 +375,12 @@ View and filter all past submissions:
 
 ## 📚 Quick Reference Links
 
-**Services:**
 - Supabase Dashboard: https://supabase.com
 - OpenAI Platform: https://platform.openai.com
 - GitHub Repo: https://github.com/thetakingsissue-lang/asset-review-tool
-- GitHub Token Settings: https://github.com/settings/tokens
-
-**Documentation:**
-- Supabase Docs: https://supabase.com/docs
-- React Docs: https://react.dev
-- OpenAI Vision API: https://platform.openai.com/docs/guides/vision
 
 ---
 
-**Last Updated:** January 15, 2026  
-**Version:** 2.2 - Phase 2 Complete + Custom Messages Feature  
-**Project Status:** Production-Ready MVP with Secure Storage + Custom Pass/Fail Messages (Ready for shadow audits)
+**Last Updated:** February 20, 2026  
+**Version:** 2.3 — Batch Photo Upload + Property Management Vertical  
+**Project Status:** Production-Ready MVP — Ready for shadow audits and first pilot outreach
